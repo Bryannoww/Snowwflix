@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SNOWWFLIX</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Firebase scripts (Add these to CodePen external JS or include here) -->
+  <!-- Make sure you added these in CodePen Settings or paste them here -->
+ <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+</head>
+<body class="theme-blue" id="top">
+
+<div id="splash-screen" class="splash-screen">
+
+    <div class="snow-particles"></div>
+
+    <img 
+    src="./images/snowflake.png" 
+    class="intro-logo"
+    >
+
+    <h1 class="intro-title">
+        SNOWWFLIX
+    </h1>
+
+
+    <p class="intro-tagline">
+        Streaming Your Cinematic Universe
+    </p>
+
+
+    <div class="intro-loader">
+        <div class="intro-progress"></div>
+    </div>
+
+</div>
+
+</div>
+<header class="navbar">
+
+  <!-- Left: Hamburger -->
+  <div class="menu-container">
+    <button id="menu-toggle" class="menu-btn">☰</button>
+
+    <div id="side-menu" class="side-menu">
+
+      <!-- Profile -->
+      <div class="menu-profile">
+        <img src="https://placehold.co/60x60" alt="Profile">
+        <h4>My Profile</h4>
+      </div>
+
+      <!-- Search -->
+      <div class="search-wrap">
+        <input id="search-bar" class="search-input" placeholder="Search movies..." />
+        <button id="search-btn" class="primary-btn">Search</button>
+        <ul id="suggestions" class="suggestion-box hidden"></ul>
+      </div>
+
+      <hr>
+
+      <button id="settings-open" class="menu-item">
+        ⚙️ Settings
+      </button>
+
+      <button id="premium-buy" class="menu-item">
+        ⭐ Premium
+      </button>
+
+      <button id="signin-open" class="menu-item">
+        👤 Login / Sign Up
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Center -->
+  <div class="logo">
+    ❄️ <span class="logo-art">SNOWWFLIX</span>
+  </div>
+
+  <!-- Right -->
+  <div class="top-icons">
+
+    <button id="search-icon" class="icon-btn">
+      🔍
+    </button>
+
+    <button id="notification-btn" class="icon-btn">
+      🔔
+    </button>
+
+  </div>
+
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="hero-poster" id="hero-poster">
+      <div class="hero-controls">
+        <button id="hero-prev" class="ghost-btn">◀</button>
+        <div class="hero-overlay">
+          <h1 id="hero-title">Featured Trailer</h1>
+          <button class="primary-btn" id="hero-watch">▶ Watch Trailer</button>
+        </div>
+        <button id="hero-next" class="ghost-btn">▶</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="rows">
+    <div id="movie-grid" class="movie-grid"></div>
+  </section>
+</main>
+
+<!-- Trailer Modal / Player -->
+<div id="trailer-modal" class="modal hidden" data-video-id="">
+  <div class="modal-backdrop"></div>
+  <div class="modal-surface player-surface" id="player-surface">
+    <div class="player-chrome">
+      <div style="display:flex;align-items:center;gap:.75rem;">
+        <span id="player-thumb" style="width:36px;height:36px;border-radius:6px;background:#08101a;overflow:hidden"></span>
+        <span class="player-title" id="player-title"></span>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button id="btn-maximize" class="icon-btn" title="Maximize/Restore">⬜</button>
+        <button id="btn-fullscreen" class="icon-btn" title="Fullscreen">⤢</button>
+        <button id="btn-close-player" class="icon-btn" title="Close">✖</button>
+      </div>
+    </div>
+
+    <div class="player-frame" id="player-frame-wrap">
+      <div class="iframe-wrap" id="player-iframe-wrap">
+        <iframe id="player-frame" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<aside id="settings-modal" class="modal hidden" aria-label="App settings">
+  <div class="modal-backdrop"></div>
+  <div class="modal-surface" style="max-width:740px;">
+    <div class="settings-header">
+      <img src="https://placehold.co/80x80?text=SN" alt="Settings" class="settings-icon" />
+      <h2>Settings</h2>
+      <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+        <button id="settings-back" class="ghost-btn">Back</button>
+        <button id="settings-close" class="icon-btn">✕</button>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <section class="settings-section profile-section" aria-labelledby="profile-heading">
+      <h3 id="profile-heading">My profile</h3>
+      <div class="profile-card">
+        <div class="profile-avatar" id="settings-avatar-wrap">
+          <img id="settings-avatar" src="https://placehold.co/72x72" alt="Profile picture" />
+          <input id="profile-pic-input" type="file" accept="image/*" class="hidden" />
+          <button id="change-avatar" class="ghost-btn">Change</button>
+        </div>
+
+        <div class="profile-fields" id="profile-fields">
+          <div id="not-signed-in-cta" style="display:none">
+            <p>You are not signed in. <button id="open-signin-cta" class="primary-btn">Sign Up / Sign In</button></p>
+          </div>
+
+          <label id="profile-username-row" style="display:none">
+            <span>Username</span>
+            <input type="text" id="profile-username" placeholder="username" />
+          </label>
+
+          <label id="profile-email-row" style="display:none">
+            <span>Email</span>
+            <input type="email" id="profile-email" readonly />
+          </label>
+
+          <label id="profile-phone-row" style="display:none">
+            <span>Phone</span>
+            <input type="text" id="profile-phone" readonly />
+          </label>
+
+          <div style="margin-top:.6rem;display:flex;gap:.5rem">
+            <button id="save-profile-btn" class="primary-btn hidden">Save</button>
+            <button id="signout-btn" class="ghost-btn hidden">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Playback & Premium -->
+    <section class="settings-section" aria-labelledby="playback-heading">
+      <h3 id="playback-heading">Video playback & Premium</h3>
+
+      <label class="setting-row">
+        <span>Autoplay on hover (thumbnails)</span>
+        <input type="checkbox" name="hoverPlay" id="setting-hover-play" checked />
+      </label>
+
+      <label class="setting-row">
+        <span>Highlight animated cards</span>
+        <input type="checkbox" id="setting-highlight-animated" />
+      </label>
+
+      <div style="margin-top:.8rem">
+        <div id="premium-block">
+          <span id="premium-status">Premium: <strong id="premium-text">Not upgraded</strong></span>
+          <div style="margin-top:.5rem">
+            <button id="premium-buy" class="primary-btn">Upgrade</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Experience & Legal -->
+    <section class="settings-section" aria-labelledby="ux-heading">
+      <h3 id="ux-heading">User experience</h3>
+
+      <label class="setting-row">
+        <span>Notifications</span>
+        <input type="checkbox" id="setting-notifications" checked />
+      </label>
+
+      <label class="setting-row">
+        <span>Appearance</span>
+        <div class="appearance-toggle" role="radiogroup" aria-label="Appearance">
+          <label><input type="radio" name="appearance" value="blue" checked /> Blue</label>
+          <label><input type="radio" name="appearance" value="red" /> Red</label>
+        </div>
+      </label>
+    </section>
+
+    <section class="settings-section help-legal-section" aria-labelledby="help-heading">
+      <h3 id="help-heading">Help & Support</h3>
+      <ul class="legal-list">
+        <li><a href="/help">Help Center / FAQs</a></li>
+        <li><a href="/report">Report a problem</a></li>
+        <li><a href="/contact">Contact support</a></li>
+      </ul>
+
+      <h3 class="legal-heading">Privacy & legal</h3>
+      <ul class="legal-list">
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
+      </ul>
+    </section>
+
+    <div class="settings-footer">
+      <small class="version">App version 1.0.0</small>
+      <div class="footer-actions">
+        <button id="reset-defaults" class="ghost-btn">Reset</button>
+        <button id="save-settings" class="primary-btn">Save</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Account / Auth Modal (multi-step sign up & login) -->
+<div id="account-modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-surface auth-surface" style="max-width:520px">
+    <button id="account-close" class="close-x">✖</button>
+    <h2 id="auth-heading">Sign In / Sign Up</h2>
+
+    <div id="auth-steps">
+      <!-- Step 1: Personal details for Sign Up -->
+      <form id="signup-step1" class="auth-step">
+        <label><input id="su-first" type="text" placeholder="First name" required /></label>
+        <label><input id="su-last" type="text" placeholder="Last name" required /></label>
+        <label><input id="su-email" type="email" placeholder="Email" required /></label>
+        <label><input id="su-phone" type="tel" placeholder="Phone (optional)" /></label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+          <button id="to-step2" type="button" class="primary-btn">Continue</button>
+          <button id="switch-to-login" type="button" class="ghost-btn">I already have account</button>
+        </div>
+      </form>
+
+      <!-- Step 2: username + password -->
+      <form id="signup-step2" class="auth-step hidden">
+        <label><input id="su-username" type="text" placeholder="Choose username" required /></label>
+        <label>
+          <input id="su-password" type="password" placeholder="Strong password" required />
+          <small id="password-hint">Use 8+ characters, numbers, mix of cases</small>
+        </label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+          <button id="signup-final" type="button" class="primary-btn">Create account</button>
+          <button id="back-to-step1" type="button" class="ghost-btn">Back</button>
+        </div>
+      </form>
+
+      <!-- Login form -->
+      <form id="login-form" class="auth-step hidden">
+        <label><input id="li-username" type="text" placeholder="Username or email" required /></label>
+        <label><input id="li-password" type="password" placeholder="Password" required /></label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+          <button id="login-final" type="button" class="primary-btn">Login</button>
+          <button id="to-signup" type="button" class="ghost-btn">Don't have account</button>
+        </div>
+
+        <div style="margin-top:1rem;display:flex;gap:.5rem;align-items:center">
+          <button id="google-signin" class="ghost-btn" type="button">Sign in with Google</button>
+        </div>
+      </form>
+
+      <div id="auth-msg" style="margin-top:.6rem;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-wrap" style="position:fixed;right:1rem;bottom:1rem;z-index:1000"></div>
+
+<!-- Your firebase config + app -->
+<script>
+  // === CONFIGURE THIS with your project's config ===
+  // If your Firebase console shows a different storageBucket value, update it here.
+  const firebaseConfig = {
+    apiKey: "AIzaSyDc69XX6iC8fAr4c3qB35Kpyq6ju2hkcR8",
+    authDomain: "snowwflix.firebaseapp.com",
+    projectId: "snowwflix",
+    storageBucket: "snowwflix.appspot.com",
+    messagingSenderId: "877729232006",
+    appId: "1:877729232006:web:67c427c9a836959e834d07",
+    measurementId: "G-66M97LGMY9"
+  };
+
+  // Initialize Firebase (global SDK)
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = (firebase && firebase.firestore) ? firebase.firestore() : null;
+  const storage = (firebase && firebase.storage) ? firebase.storage() : null;
+</script>
+
+<!-- Main app code -->
+<script src="app.js"></script>
+</body>
+</html>
