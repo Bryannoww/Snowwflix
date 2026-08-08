@@ -154,8 +154,14 @@ behavior:"smooth"
 
 
 });
-const API_KEY = "AIzaSyCxNqiq_VHD2Wtv2hK5SaOlP41uF_JgVDE";
+const API_KEY = "AIzaSyB6zk-Y9XP5fKPgKCA4IGvO0a5cjkglK6g";
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
+// Free YouTube search proxies (no API key / quota). Tried when Google quota is exhausted.
+const PIPED_SEARCH_ENDPOINTS = [
+  "https://api.piped.private.coffee/search",
+  "https://pipedapi.adminforge.de/search",
+  "https://pipedapi.reallyaweso.me/search"
+];
 
 let movies = [];
 let nextPageToken = "";
@@ -1608,10 +1614,10 @@ function runSearch() {
   const q = ((searchBar && searchBar.value) || (document.getElementById("top-search") && document.getElementById("top-search").value) || "").trim();
   hideAllSuggestions();
   if (!q) return;
-  movies = [];
-  nextPageToken = "";
-  fetchMovies(q + " official trailer", false);
-  fetchCategoryQueryToRow(q);
+  // Keep both inputs in sync, then use the dedicated search flow
+  const top = document.getElementById("top-search");
+  if (top) top.value = q;
+  runTopSearch();
 }
 
 document.getElementById("search-btn")?.addEventListener("click", runSearch);
@@ -1717,20 +1723,10 @@ async function fillSuggestions(inputEl, boxEl, onPick) {
 
   // Enrich from API (short debounce handled by caller)
   try {
-    const res = await fetch(
-      `${BASE_URL}/search?part=snippet&maxResults=8&q=${encodeURIComponent(q + " movie trailer")}&type=video&videoEmbeddable=true&key=${API_KEY}`
-    );
-    const data = await res.json();
-    const apiItems = (data.items || [])
-      .filter((i) => i.id && i.id.videoId)
-      .map((i) => ({
-        id: i.id.videoId,
-        title: i.snippet.title,
-        thumb: (i.snippet.thumbnails.default || i.snippet.thumbnails.medium || {}).url || "",
-        channel: i.snippet.channelTitle || ""
-      }));
+    // Prefer official API; if quota is dead, Piped still powers suggestions
+    let apiItems = await searchViaYoutubeApi(q, 8);
+    if (!apiItems.length) apiItems = await searchViaPiped(q, 8);
     indexMovies(apiItems);
-    // Merge: local first, then API unique
     const seen = new Set(local.map((m) => m.id));
     const merged = local.slice();
     apiItems.forEach((m) => {
@@ -1739,17 +1735,26 @@ async function fillSuggestions(inputEl, boxEl, onPick) {
         merged.push(m);
       }
     });
-    renderSuggestList(boxEl, merged.slice(0, 8), inputEl, onPick);
-  } catch (e) {
-    // API down / quota — keep local results visible
-    if (!local.length) {
-      // Still try getFallback title scan
+    if (merged.length) {
+      renderSuggestList(boxEl, merged.slice(0, 8), inputEl, onPick);
+    } else {
       const fb = getFallback(q, 8);
       if (fb.length) {
         indexMovies(fb);
         renderSuggestList(boxEl, fb, inputEl, onPick);
       } else {
-        boxEl.innerHTML = "<li class=\"suggest-empty\"><span>No matches — press Enter to search</span></li>";
+        boxEl.innerHTML = '<li class="suggest-empty"><span>Press Enter to search "' + q.replace(/</g, "") + '"</span></li>';
+        boxEl.classList.remove("hidden");
+      }
+    }
+  } catch (e) {
+    if (!local.length) {
+      const fb = getFallback(q, 8);
+      if (fb.length) {
+        indexMovies(fb);
+        renderSuggestList(boxEl, fb, inputEl, onPick);
+      } else {
+        boxEl.innerHTML = '<li class="suggest-empty"><span>Press Enter to search</span></li>';
         boxEl.classList.remove("hidden");
       }
     }
@@ -1877,32 +1882,61 @@ if (menuToggle && sideMenu) {
 }
 
 // Search icon focuses the search bar
-// Top navbar search
+// Top navbar search — searches YouTube for any movie title worldwide
+let searchInFlight = 0;
+
+function applySearchResults(q, items) {
+  const block = document.getElementById("search-results-block");
+  const titleEl = document.getElementById("search-results-title");
+  const list = dedupeMovies(items || []);
+  indexMovies(list);
+  if (block) block.classList.remove("hidden");
+  if (titleEl) titleEl.textContent = "🔍 " + q + (list.length ? " (" + list.length + ")" : "");
+  renderRow("row-search-results", list);
+  if (list.length) {
+    heroPool = list.slice(0, 8);
+    heroIndex = 0;
+    setHero(heroPool[0]);
+    buildHeroDots();
+    startHeroRotation();
+    movies = list;
+  }
+  block?.scrollIntoView({ behavior: "smooth", block: "start" });
+  return list;
+}
+
+function showSearchLoading(q) {
+  const block = document.getElementById("search-results-block");
+  const titleEl = document.getElementById("search-results-title");
+  const row = document.getElementById("row-search-results");
+  if (block) block.classList.remove("hidden");
+  if (titleEl) titleEl.textContent = "🔍 Searching for \"" + q + "\"…";
+  if (row) {
+    row.innerHTML = '<p class="row-empty" style="padding:1rem 0.5rem;opacity:.8">Looking up trailers on YouTube…</p>';
+  }
+  block?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function runTopSearch() {
   const q = (document.getElementById("top-search")?.value || "").trim();
   hideAllSuggestions();
   if (!q) return;
   movies = [];
   nextPageToken = "";
-  // Instant local results (no network wait)
+
+  // Instant local hints while network loads (fallback catalog only)
   const localHits = localSuggest(q, 16);
-  const block = document.getElementById("search-results-block");
-  const titleEl = document.getElementById("search-results-title");
   if (localHits.length) {
-    if (block) block.classList.remove("hidden");
-    if (titleEl) titleEl.textContent = "🔍 " + q;
-    renderRow("row-search-results", localHits);
-    heroPool = localHits.slice(0, 6);
-    heroIndex = 0;
-    setHero(heroPool[0]);
-    buildHeroDots();
-    startHeroRotation();
-    movies = localHits;
+    applySearchResults(q, localHits);
+  } else {
+    showSearchLoading(q);
   }
-  // Then try network (may enrich or replace)
-  fetchMovies(q + " official trailer", false);
+
+  // Always query YouTube so any movie title in the world can be found
   fetchCategoryQueryToRow(q);
-  window.scrollTo({ top: document.getElementById("category-nav")?.offsetTop || 0, behavior: "smooth" });
+
+  const nav = document.getElementById("category-nav");
+  if (nav) window.scrollTo({ top: nav.offsetTop || 0, behavior: "smooth" });
 }
 
 function dedupeMovies(list) {
@@ -1916,58 +1950,143 @@ function dedupeMovies(list) {
   return out;
 }
 
+/** Map official YouTube Data API search items → movie cards */
+function mapYoutubeApiItems(raw) {
+  return (raw || [])
+    .filter((i) => i.id && i.id.videoId)
+    .map((i) => ({
+      id: i.id.videoId,
+      title: i.snippet.title,
+      thumb: lightThumb(
+        (i.snippet.thumbnails.medium || i.snippet.thumbnails.default || i.snippet.thumbnails.high || {}).url || ""
+      ),
+      channel: i.snippet.channelTitle || ""
+    }));
+}
+
+/** Map Piped / Invidious-style search items → movie cards */
+function mapPipedItems(raw) {
+  const list = Array.isArray(raw) ? raw : raw && raw.items ? raw.items : [];
+  return list
+    .filter((i) => i && (i.url || i.id || i.videoId))
+    .map((i) => {
+      let id = i.videoId || i.id || "";
+      if (!id && i.url) {
+        const m = String(i.url).match(/(?:v=|\/watch\?v=|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
+        if (m) id = m[1];
+        else {
+          const tail = String(i.url).split("/").pop();
+          if (tail && /^[a-zA-Z0-9_-]{6,}$/.test(tail)) id = tail;
+        }
+      }
+      if (!id) return null;
+      const title = i.title || i.name || "Trailer";
+      const channel = i.uploaderName || i.uploader || i.author || i.channelName || "";
+      const thumb =
+        (typeof i.thumbnail === "string" && i.thumbnail) ||
+        (i.thumbnail && i.thumbnail.url) ||
+        (Array.isArray(i.thumbnails) && i.thumbnails[0] && (i.thumbnails[0].url || i.thumbnails[0])) ||
+        lightThumb(id);
+      return { id, title, thumb: lightThumb(id) || thumb, channel };
+    })
+    .filter(Boolean);
+}
+
+/** Search Piped instances (no Google quota). Returns [] on total failure. */
+async function searchViaPiped(term, max = 20) {
+  const q = encodeURIComponent(term + " official trailer");
+  for (const base of PIPED_SEARCH_ENDPOINTS) {
+    try {
+      const url = base + "?q=" + q + "&filter=videos";
+      const res = await fetch(url, { method: "GET", mode: "cors" });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const items = mapPipedItems(data).slice(0, max);
+      if (items.length) {
+        console.log("Search via Piped OK:", base, items.length);
+        return items;
+      }
+    } catch (err) {
+      console.warn("Piped search failed:", base, err && err.message);
+    }
+  }
+  return [];
+}
+
+/** Official YouTube Data API search. Returns [] if quota / error. */
+async function searchViaYoutubeApi(term, max = 25) {
+  const queries = [term + " official trailer", term + " movie trailer", term + " trailer"];
+  const items = [];
+  const seen = new Set();
+  for (const searchQ of queries) {
+    try {
+      const res = await fetch(
+        `${BASE_URL}/search?part=snippet&maxResults=${max}&q=${encodeURIComponent(searchQ)}&type=video&videoEmbeddable=true&key=${API_KEY}`
+      );
+      const data = await res.json();
+      if (data.error) {
+        console.warn("YouTube API error:", data.error.message || data.error);
+        // Quota exhausted → stop trying official API
+        if (String(data.error.message || "").toLowerCase().includes("quota") || data.error.code === 403 || data.error.code === 429) {
+          return items;
+        }
+        continue;
+      }
+      mapYoutubeApiItems(data.items).forEach((m) => {
+        if (!seen.has(m.id)) {
+          seen.add(m.id);
+          items.push(m);
+        }
+      });
+      if (items.length >= 12) break;
+    } catch (err) {
+      console.warn("YouTube API fetch failed:", err);
+    }
+  }
+  return items;
+}
+
 async function fetchCategoryQueryToRow(q) {
-  const block = document.getElementById("search-results-block");
+  if (!q || !String(q).trim()) return;
+  const term = String(q).trim();
+  const requestId = ++searchInFlight;
   const titleEl = document.getElementById("search-results-title");
+  const block = document.getElementById("search-results-block");
+
   try {
-    const res = await fetch(
-      `${BASE_URL}/search?part=snippet&maxResults=16&q=${encodeURIComponent(q + " movie trailer")}&type=video&key=${API_KEY}`
-    );
-    const data = await res.json();
-    let items = [];
-    if (data.items && data.items.length) {
-      items = data.items
-        .filter((i) => i.id && i.id.videoId)
-        .map((i) => ({
-          id: i.id.videoId,
-          title: i.snippet.title,
-          thumb: lightThumb((i.snippet.thumbnails.medium || i.snippet.thumbnails.default || i.snippet.thumbnails.high || {}).url || ""),
-          channel: i.snippet.channelTitle
-        }));
-    } else {
-      console.warn("Search API empty/error — using fallback");
-      items = getFallback(query || "search", 12);
+    // 1) Official YouTube API (works when quota remains)
+    let items = await searchViaYoutubeApi(term, 25);
+    if (requestId !== searchInFlight) return;
+
+    // 2) Piped proxies — no API key, works when Google quota is exceeded
+    if (!items.length) {
+      items = await searchViaPiped(term, 20);
+      if (requestId !== searchInFlight) return;
     }
+
+    // 3) Local hard-coded catalog (popular titles only)
+    if (!items.length) {
+      console.warn("All network search failed — local fallback for:", term);
+      items = getFallback(term, 16);
+    }
+
     items = dedupeMovies(items);
-    indexMovies(items);
-    // Dedicated search results row
-    if (block) block.classList.remove("hidden");
-    if (titleEl) titleEl.textContent = "🔍 " + q;
-    renderRow("row-search-results", items);
-    // Hero shows only the searched title (first / best match)
-    if (items.length) {
-      heroPool = items.slice(0, 6);
-      heroIndex = 0;
-      setHero(heroPool[0]);
-      buildHeroDots();
-      startHeroRotation();
-      movies = items;
+    applySearchResults(term, items);
+
+    if (!items.length && titleEl) {
+      titleEl.textContent = '🔍 No trailers found for "' + term + '"';
+      if (block) block.classList.remove("hidden");
+      const row = document.getElementById("row-search-results");
+      if (row) {
+        row.innerHTML =
+          '<p class="row-empty" style="padding:1rem 0.5rem">No trailers found. Try another title (e.g. “Oppenheimer”, “Spider-Man”, “The Matrix”).</p>';
+      }
     }
-    // Show all other rows still, but scroll to search results
-    block?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
+    if (requestId !== searchInFlight) return;
     console.warn("fetchCategoryQueryToRow error — using fallback", e);
-    const items = dedupeMovies(getFallback(query || "search", 12));
-    if (block) block.classList.remove("hidden");
-    if (titleEl) titleEl.textContent = "🔍 " + q;
-    renderRow("row-search-results", items);
-    if (items.length) {
-      heroPool = items.slice(0, 6);
-      heroIndex = 0;
-      setHero(heroPool[0]);
-      buildHeroDots();
-      startHeroRotation();
-    }
+    const items = dedupeMovies(getFallback(term, 16));
+    applySearchResults(term, items);
   }
 }
 

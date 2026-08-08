@@ -1793,8 +1793,14 @@ body.theme-light .cat-chip.active {
 }
 
 @media (max-width: 720px) {
-  .nav-search { max-width: none; }
-  .top-search-btn { display: none; }
+  .nav-search { max-width: none; gap: 0.35rem; }
+  /* Keep Search visible on mobile — users need a clear way to submit */
+  .top-search-btn {
+    display: inline-flex !important;
+    align-items: center;
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.85rem !important;
+  }
 }
 
 /* Luxury hero fade */
