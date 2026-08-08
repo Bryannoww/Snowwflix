@@ -3,261 +3,355 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>SNOWWFLIX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Firebase scripts (Add these to CodePen external JS or include here) -->
-  <!-- Make sure you added these in CodePen Settings or paste them here -->
- <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <link rel="stylesheet" href="css/settings.css" />
+  <meta name="color-scheme" content="dark light" />
+  <!-- Apply system / saved theme before paint to avoid flash -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("snowwflix_settings");
+        var theme = "system";
+        var userSet = false;
+        if (raw) {
+          var s = JSON.parse(raw);
+          theme = s.theme || "system";
+          userSet = !!s.themeUserSet;
+        }
+        var resolved = theme;
+        if (theme === "system" || !userSet) {
+          resolved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches)
+            ? "light" : "blue";
+        }
+        if (resolved !== "light" && resolved !== "red" && resolved !== "blue") resolved = "blue";
+        document.documentElement.classList.add("theme-" + resolved);
+        document.documentElement.style.colorScheme = resolved === "light" ? "light" : "dark";
+      } catch (e) {}
+    })();
+  </script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 </head>
 <body class="theme-blue" id="top">
 
 <div id="splash-screen" class="splash-screen">
-
-    <div class="snow-particles"></div>
-
-    <img 
-    src="./images/snowflake.png" 
-    class="intro-logo"
-    >
-
-    <h1 class="intro-title">
-        SNOWWFLIX
-    </h1>
-
-
-    <p class="intro-tagline">
-        Streaming Your Cinematic Universe
-    </p>
-
-
-    <div class="intro-loader">
-        <div class="intro-progress"></div>
-    </div>
-
+  <div class="splash-bg-glow" aria-hidden="true"></div>
+  <div class="splash-ring" aria-hidden="true"></div>
+  <div class="snow-particles" aria-hidden="true"></div>
+  <div class="splash-logo-wrap">
+    <img src="./images/snowwflix-logo.png" class="intro-logo" alt="Snowwflix" width="320" height="320" />
+  </div>
+  <h1 class="intro-title"><span class="t-snow">SNOWW</span><span class="t-flix">FLIX</span></h1>
+  <p class="intro-tagline">STREAM BEYOND</p>
+  <div class="intro-loader"><div class="intro-progress"></div></div>
 </div>
 
 </div>
 <header class="navbar">
-
-  <!-- Left: Hamburger -->
-  <div class="menu-container">
-    <button id="menu-toggle" class="menu-btn">☰</button>
-
-    <div id="side-menu" class="side-menu">
-
-      <!-- Profile -->
-      <div class="menu-profile">
-        <img src="https://placehold.co/60x60" alt="Profile">
-        <h4>My Profile</h4>
-      </div>
-
-      <!-- Search -->
-      <div class="search-wrap">
-        <input id="search-bar" class="search-input" placeholder="Search movies..." />
-        <button id="search-btn" class="primary-btn">Search</button>
-        <ul id="suggestions" class="suggestion-box hidden"></ul>
-      </div>
-
-      <hr>
-
-      <button id="settings-open" class="menu-item">
-        ⚙️ Settings
-      </button>
-
-      <button id="premium-buy" class="menu-item">
-        ⭐ Premium
-      </button>
-
-      <button id="signin-open" class="menu-item">
-        👤 Login / Sign Up
-      </button>
-
+  <!-- Left: Logo (home link) + menu -->
+  <div class="nav-left">
+    <button id="menu-toggle" class="menu-btn" aria-label="Menu">☰</button>
+    <a href="#top" class="logo logo-link" id="logo-home" title="Snowwflix Home">
+      <span class="logo-emoji">❄️</span>
+      <span class="logo-art">SNOWWFLIX</span>
+    </a>
+    <!-- Auth-aware Login / Sign Up (shown when logged out) -->
+    <div class="nav-auth-links" id="nav-auth-links">
+      <button type="button" id="nav-login-btn" class="nav-auth-btn">Login</button>
+      <span class="nav-auth-sep">/</span>
+      <button type="button" id="nav-signup-btn" class="nav-auth-btn">Sign Up</button>
     </div>
   </div>
 
-  <!-- Center -->
-  <div class="logo">
-    ❄️ <span class="logo-art">SNOWWFLIX</span>
+  <div id="side-menu" class="side-menu">
+    <div class="menu-profile">
+      <img id="menu-avatar" src="https://placehold.co/60x60" alt="Profile">
+      <h4 id="menu-display-name" data-i18n="guest">Guest</h4>
+      <p id="menu-user-email" style="margin:4px 0 0;font-size:0.8rem;color:#8b949e;"></p>
+      <label class="avatar-upload-label hidden" id="avatar-upload-wrap">
+        <input type="file" id="avatar-upload" accept="image/*" hidden />
+        Change photo
+      </label>
+    </div>
+    <button id="settings-open" class="menu-item">⚙️ <span data-i18n="settings">Settings</span></button>
+    <button id="premium-buy" class="menu-item">⭐ <span data-i18n="premium">Premium</span></button>
+    <button id="signin-open" class="menu-item">👤 <span data-i18n="login">Login / Sign Up</span></button>
+    <button id="signout-btn" class="menu-item hidden" type="button">🚪 <span data-i18n="logout">Log Out</span></button>
   </div>
 
-  <!-- Right -->
-  <div class="top-icons">
-
-    <button id="search-icon" class="icon-btn">
-      🔍
-    </button>
-
-    <button id="notification-btn" class="icon-btn">
-      🔔
-    </button>
-
+  <!-- Center: quick search with predictive dropdown -->
+  <div class="nav-search">
+    <div class="top-search-wrap">
+      <input id="top-search" class="top-search-input" type="search" placeholder="Search movie trailers…" data-i18n-placeholder="searchPlaceholder" autocomplete="off" />
+      <ul id="top-suggestions" class="suggestion-box top-suggestion-box hidden" role="listbox"></ul>
+    </div>
+    <button type="button" id="top-search-btn" class="primary-btn top-search-btn" data-i18n="search">Search</button>
   </div>
 
+  <!-- Right: dark mode + profile -->
+  <div class="top-icons nav-right">
+    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle dark mode">
+      <span class="theme-icon theme-icon-moon" aria-hidden="true">🌙</span>
+      <span class="theme-icon theme-icon-sun" aria-hidden="true">☀️</span>
+    </button>
+    <button type="button" class="profile-chip" id="profile-chip" title="Account">
+      <img id="nav-avatar" src="https://placehold.co/40x40/333/ffffff?text=?" alt="" />
+      <span id="nav-username" class="nav-username">Login</span>
+    </button>
+  </div>
 </header>
 
 <main>
   <section class="hero" id="hero">
     <div class="hero-poster" id="hero-poster">
-      <div class="hero-controls">
-        <button id="hero-prev" class="ghost-btn">◀</button>
-        <div class="hero-overlay">
-          <h1 id="hero-title">Featured Trailer</h1>
-          <button class="primary-btn" id="hero-watch">▶ Watch Trailer</button>
+      <div class="hero-gradient"></div>
+      <div class="hero-content">
+        <p class="hero-eyebrow" data-i18n="featured">Featured</p>
+        <h1 id="hero-title">Loading featured titles…</h1>
+        <p class="hero-meta" id="hero-meta">Curated trailers · Watch in one tap</p>
+        <div class="hero-actions">
+          <button class="primary-btn hero-cta" id="hero-watch"><span data-i18n="watchTrailer">▶ Watch Trailer</span></button>
+          <button class="ghost-btn hero-cta" id="hero-prev" type="button">◀</button>
+          <button class="ghost-btn hero-cta" id="hero-next" type="button">▶</button>
         </div>
-        <button id="hero-next" class="ghost-btn">▶</button>
+        <div class="hero-dots" id="hero-dots"></div>
+      </div>
+      <!-- 4 rotating trending cards on hero -->
+      <div class="hero-cards-rail" id="hero-cards-rail" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <nav class="category-nav" id="category-nav" aria-label="Categories">
+    <button type="button" class="cat-chip active" data-cat="trending">🔥 Trending</button>
+    <button type="button" class="cat-chip" data-cat="top50">🏆 Top 50</button>
+    <button type="button" class="cat-chip" data-cat="thriller">Thriller</button>
+    <button type="button" class="cat-chip" data-cat="horror">Horror</button>
+    <button type="button" class="cat-chip" data-cat="animation">Animation</button>
+    <button type="button" class="cat-chip" data-cat="romance">Romance</button>
+    <button type="button" class="cat-chip" data-cat="drama">Drama</button>
+    <button type="button" class="cat-chip" data-cat="watch">📺 Where to Watch</button>
+  </nav>
+
+  <section class="rows" id="content-rows">
+    <div class="row-block hidden" data-row="search-results" id="search-results-block">
+      <div class="row-header"><h2 id="search-results-title">🔍 Search results</h2><button type="button" class="row-more" id="clear-search-results">Clear</button></div>
+      <div class="row-scroller movie-grid" id="row-search-results"></div>
+    </div>
+    <div class="row-block" data-row="trending">
+      <div class="row-header"><h2>🔥 Trending</h2><button type="button" class="row-more" data-cat="trending">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-trending"></div>
+    </div>
+    <div class="row-block" data-row="top50">
+      <div class="row-header"><h2>🏆 Top 50 Trailers</h2><button type="button" class="row-more" data-cat="top50">See all</button></div>
+      <p class="row-sub">Highest-rated trailers · IMDb &amp; Rotten Tomatoes style scores</p>
+      <div class="row-scroller movie-grid" id="row-top50"></div>
+    </div>
+    <div class="row-block" data-row="thriller">
+      <div class="row-header"><h2>Thriller</h2><button type="button" class="row-more" data-cat="thriller">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-thriller"></div>
+    </div>
+    <div class="row-block" data-row="horror">
+      <div class="row-header"><h2>Horror</h2><button type="button" class="row-more" data-cat="horror">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-horror"></div>
+    </div>
+    <div class="row-block" data-row="animation">
+      <div class="row-header"><h2>Animation</h2><button type="button" class="row-more" data-cat="animation">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-animation"></div>
+    </div>
+    <div class="row-block" data-row="romance">
+      <div class="row-header"><h2>Romance</h2><button type="button" class="row-more" data-cat="romance">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-romance"></div>
+    </div>
+    <div class="row-block" data-row="drama">
+      <div class="row-header"><h2>Drama</h2><button type="button" class="row-more" data-cat="drama">See all</button></div>
+      <div class="row-scroller movie-grid" id="row-drama"></div>
+    </div>
+    <div class="row-block" data-row="watch">
+      <div class="row-header"><h2>📺 Where to Watch</h2></div>
+      <p class="row-sub">Discover full movies &amp; streaming platforms</p>
+      <div class="where-to-watch-grid" id="row-watch">
+        <a class="watch-card" href="https://moviebox.ph/" target="_blank" rel="noopener noreferrer">
+          <span class="watch-icon">🎬</span>
+          <span class="watch-name">MovieBox</span>
+          <span class="watch-desc">Movies &amp; series</span>
+        </a>
+        <a class="watch-card" href="https://www.imdb.com/" target="_blank" rel="noopener noreferrer">
+          <span class="watch-icon">⭐</span>
+          <span class="watch-name">IMDb</span>
+          <span class="watch-desc">Ratings &amp; info</span>
+        </a>
+        <a class="watch-card" href="https://videodownloader.site/" target="_blank" rel="noopener noreferrer">
+          <span class="watch-icon">⬇️</span>
+          <span class="watch-name">Video Downloader</span>
+          <span class="watch-desc">Save offline</span>
+        </a>
+        <a class="watch-card" href="https://watch.plex.tv/" target="_blank" rel="noopener noreferrer">
+          <span class="watch-icon">📺</span>
+          <span class="watch-name">Plex</span>
+          <span class="watch-desc">Free streaming</span>
+        </a>
       </div>
     </div>
   </section>
 
-  <section class="rows">
-    <div id="movie-grid" class="movie-grid"></div>
-  </section>
+  <!-- Legacy single grid (hidden; used as fallback target) -->
+  <div id="movie-grid" class="movie-grid hidden" aria-hidden="true"></div>
 </main>
 
-<!-- Trailer Modal / Player -->
-<div id="trailer-modal" class="modal hidden" data-video-id="">
-  <div class="modal-backdrop"></div>
-  <div class="modal-surface player-surface" id="player-surface">
-    <div class="player-chrome">
-      <div style="display:flex;align-items:center;gap:.75rem;">
-        <span id="player-thumb" style="width:36px;height:36px;border-radius:6px;background:#08101a;overflow:hidden"></span>
-        <span class="player-title" id="player-title"></span>
+<!-- Site footer -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <h4>Snowwflix</h4>
+      <ul>
+        <li><a href="#top">Home</a></li>
+        <li><a href="#category-nav">Trending</a></li>
+        <li><a href="#row-thriller">Trailers</a></li>
+        <li><button type="button" class="footer-link-btn" id="footer-settings">Settings</button></li>
+        <li><button type="button" class="footer-link-btn" id="footer-account">Account</button></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Genres</h4>
+      <ul>
+        <li><a href="#row-thriller">Thriller</a></li>
+        <li><a href="#row-horror">Horror</a></li>
+        <li><a href="#row-animation">Animation</a></li>
+        <li><a href="#row-romance">Romance</a></li>
+        <li><a href="#row-drama">Drama</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Region</h4>
+      <ul>
+        <li>Kenya</li>
+        <li>United States</li>
+        <li>United Kingdom</li>
+        <li>Global</li>
+      </ul>
+    </div>
+    <div class="footer-col footer-connect">
+      <h4>Connect &amp; Support</h4>
+      <div class="social-logos" aria-label="Social links">
+        <a href="https://www.tiktok.com/@snowwflix" target="_blank" rel="noopener noreferrer" class="social-logo" title="TikTok" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.2a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.75a8.18 8.18 0 0 0 4.76 1.52V6.84a4.85 4.85 0 0 1-1-.15z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/snowwflix/?hl=en" target="_blank" rel="noopener noreferrer" class="social-logo" title="Instagram" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 3.25.15 4.77 1.69 4.92 4.92.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.15 3.23-1.66 4.77-4.92 4.92-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-3.26-.15-4.77-1.7-4.92-4.92-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85C2.38 3.92 3.9 2.38 7.15 2.23 8.42 2.17 8.8 2.16 12 2.16m0-2.16C8.74 0 8.33.01 7.05.07 2.7.27.27 2.69.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.2 4.36 2.62 6.78 6.98 6.98C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c4.35-.2 6.78-2.62 6.98-6.98.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95C23.73 2.69 21.31.27 16.95.07 15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.41-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg>
+        </a>
+        <a href="https://x.com/SNOWWFLIX" target="_blank" rel="noopener noreferrer" class="social-logo" title="X" aria-label="X">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.227-8.26L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="https://www.facebook.com/profile.php?id=61592722932826" target="_blank" rel="noopener noreferrer" class="social-logo" title="Facebook" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.79-4.7 4.53-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.89v2.26h3.32l-.53 3.49h-2.79V24C19.62 23.1 24 18.1 24 12.07z"/></svg>
+        </a>
+        <a href="https://wa.me/254711414071" target="_blank" rel="noopener noreferrer" class="social-logo" title="WhatsApp" aria-label="WhatsApp">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.04-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.48.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35zM12.05 21.78h-.01a9.78 9.78 0 0 1-4.98-1.36l-.36-.21-3.7.97 1-3.62-.23-.37a9.77 9.77 0 0 1-1.5-5.2 9.8 9.8 0 0 1 9.8-9.8 9.73 9.73 0 0 1 6.93 2.87 9.74 9.74 0 0 1 2.87 6.93 9.8 9.8 0 0 1-9.82 9.79zm8.41-18.2A11.7 11.7 0 0 0 12.04 0C5.46 0 .1 5.35.1 11.93c0 2.1.55 4.15 1.6 5.96L0 24l6.26-1.64a11.9 11.9 0 0 0 5.78 1.47h.01c6.58 0 11.93-5.35 11.93-11.93a11.86 11.86 0 0 0-3.52-8.42z"/></svg>
+        </a>
+        <a href="mailto:briannyangate449@gmail.com" class="social-logo" title="Email" aria-label="Email">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </a>
       </div>
-      <div style="display:flex;gap:.5rem;">
-        <button id="btn-maximize" class="icon-btn" title="Maximize/Restore">⬜</button>
-        <button id="btn-fullscreen" class="icon-btn" title="Fullscreen">⤢</button>
-        <button id="btn-close-player" class="icon-btn" title="Close">✖</button>
+      <ul class="footer-legal">
+        <li><a href="privacy.html" target="_blank">Privacy Policy</a></li>
+        <li><a href="terms.html" target="_blank">Terms of Service</a></li>
+      </ul>
+    </div>
+    <div class="footer-brand">
+      <div class="footer-logo">❄️ <span>SNOWWFLIX</span></div>
+      <p class="footer-copy">© 2026 Snowwflix. All rights reserved.<br>Founded by Brian Nyangate · Nairobi, Kenya.</p>
+      <p class="footer-disclaimer">Disclaimer: Snowwflix is a trailer discovery platform. We do not host full copyrighted films on our servers. Trailers and promotional materials are provided via third-party services for discovery purposes only.</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Discover trailers, trending titles, and your next watch — Streaming Your Cinematic Universe.</p>
+  </div>
+</footer>
+
+
+
+<!-- Snowwflix custom player -->
+<div id="trailer-modal" class="modal sf-player-modal hidden" data-video-id="">
+  <div class="modal-backdrop sf-player-backdrop"></div>
+  <div class="sf-player sf-player-glow" id="player-surface">
+    <div class="sf-player-top">
+      <div class="sf-player-brand">
+        <span class="sf-player-logo">❄️ SNOWWFLIX</span>
+        <span class="sf-player-badge">HD Trailer</span>
+      </div>
+      <div class="sf-player-top-actions">
+        <button type="button" id="sf-btn-minimize" class="sf-pbtn" title="Minimize">—</button>
+        <button type="button" id="btn-fullscreen" class="sf-pbtn" title="Fullscreen">⛶</button>
+        <button type="button" id="sf-btn-stop" class="sf-pbtn" title="Stop">⏹</button>
+        <button type="button" id="btn-close-player" class="sf-pbtn sf-pbtn-close" title="Close">✕</button>
       </div>
     </div>
 
-    <div class="player-frame" id="player-frame-wrap">
-      <div class="iframe-wrap" id="player-iframe-wrap">
-        <iframe id="player-frame" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    <div class="sf-player-stage" id="sf-player-stage">
+      <div class="sf-iframe-wrap" id="sf-iframe-wrap">
+        <div id="player-frame"></div>
       </div>
+      <!-- Blocks YouTube chrome / external links -->
+      <div class="sf-click-shield sf-shield-full" id="sf-shield-full" aria-hidden="true"></div>
+      <div class="sf-click-shield sf-shield-top" aria-hidden="true"></div>
+      <div class="sf-click-shield sf-shield-bottom" aria-hidden="true"></div>
+      <div class="sf-click-shield sf-shield-right" aria-hidden="true"></div>
+      <button type="button" class="sf-big-play" id="sf-big-play" aria-label="Play">▶</button>
+
+      <!-- End-of-video suggestions (stay on Snowwflix) -->
+      <div id="sf-ended-overlay" class="sf-ended-overlay hidden">
+        <div class="sf-ended-inner">
+          <p class="sf-ended-label">Up next on Snowwflix</p>
+          <h3 id="sf-ended-title">More trailers</h3>
+          <div id="sf-suggestions" class="sf-suggestions"></div>
+          <div class="sf-ended-actions">
+            <button type="button" class="primary-btn" id="sf-ended-replay">Replay</button>
+            <button type="button" class="ghost-btn" id="sf-ended-close">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sf-player-bottom">
+      <div class="sf-progress-wrap" id="sf-progress-wrap" title="Seek">
+        <div class="sf-progress-track">
+          <div class="sf-progress-buffered" id="sf-progress-buffered"></div>
+          <div class="sf-progress-played" id="sf-progress-played"></div>
+          <div class="sf-progress-thumb" id="sf-progress-thumb"></div>
+        </div>
+        <div class="sf-progress-time">
+          <span id="sf-time-current">0:00</span>
+          <span id="sf-time-duration">0:00</span>
+        </div>
+      </div>
+      <div class="sf-player-info">
+        <h3 class="player-title" id="player-title">Trailer</h3>
+        <p class="sf-player-sub" id="player-sub">Watching on Snowwflix</p>
+      </div>
+      <div class="sf-player-controls">
+        <button type="button" class="sf-pbtn" id="sf-btn-back10" title="Back 10s">⏪</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-play" title="Play/Pause">▶</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-fwd10" title="Forward 10s">⏩</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-mute" title="Mute">🔊</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-cc" title="Subtitles (CC)">CC</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-replay" title="Replay">↻</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-like" title="Like">♡</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-watchlater" title="Watch Later">⏱</button>
+        <button type="button" class="sf-pbtn" id="sf-btn-subscribe" title="Subscribe on YouTube">🔔</button>
+        <a class="sf-pbtn sf-pbtn-link" id="sf-btn-download" href="https://v30.www-y2mate.com/" target="_blank" rel="noopener noreferrer" title="Download">⬇️</a>
+      </div>
+      <p class="sf-player-brandline">Powered by <strong>Snowwflix</strong></p>
     </div>
   </div>
 </div>
-
-<!-- Settings Modal -->
-<aside id="settings-modal" class="modal hidden" aria-label="App settings">
-  <div class="modal-backdrop"></div>
-  <div class="modal-surface" style="max-width:740px;">
-    <div class="settings-header">
-      <img src="https://placehold.co/80x80?text=SN" alt="Settings" class="settings-icon" />
-      <h2>Settings</h2>
-      <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
-        <button id="settings-back" class="ghost-btn">Back</button>
-        <button id="settings-close" class="icon-btn">✕</button>
-      </div>
-    </div>
-
-    <!-- Profile -->
-    <section class="settings-section profile-section" aria-labelledby="profile-heading">
-      <h3 id="profile-heading">My profile</h3>
-      <div class="profile-card">
-        <div class="profile-avatar" id="settings-avatar-wrap">
-          <img id="settings-avatar" src="https://placehold.co/72x72" alt="Profile picture" />
-          <input id="profile-pic-input" type="file" accept="image/*" class="hidden" />
-          <button id="change-avatar" class="ghost-btn">Change</button>
-        </div>
-
-        <div class="profile-fields" id="profile-fields">
-          <div id="not-signed-in-cta" style="display:none">
-            <p>You are not signed in. <button id="open-signin-cta" class="primary-btn">Sign Up / Sign In</button></p>
-          </div>
-
-          <label id="profile-username-row" style="display:none">
-            <span>Username</span>
-            <input type="text" id="profile-username" placeholder="username" />
-          </label>
-
-          <label id="profile-email-row" style="display:none">
-            <span>Email</span>
-            <input type="email" id="profile-email" readonly />
-          </label>
-
-          <label id="profile-phone-row" style="display:none">
-            <span>Phone</span>
-            <input type="text" id="profile-phone" readonly />
-          </label>
-
-          <div style="margin-top:.6rem;display:flex;gap:.5rem">
-            <button id="save-profile-btn" class="primary-btn hidden">Save</button>
-            <button id="signout-btn" class="ghost-btn hidden">Sign out</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Playback & Premium -->
-    <section class="settings-section" aria-labelledby="playback-heading">
-      <h3 id="playback-heading">Video playback & Premium</h3>
-
-      <label class="setting-row">
-        <span>Autoplay on hover (thumbnails)</span>
-        <input type="checkbox" name="hoverPlay" id="setting-hover-play" checked />
-      </label>
-
-      <label class="setting-row">
-        <span>Highlight animated cards</span>
-        <input type="checkbox" id="setting-highlight-animated" />
-      </label>
-
-      <div style="margin-top:.8rem">
-        <div id="premium-block">
-          <span id="premium-status">Premium: <strong id="premium-text">Not upgraded</strong></span>
-          <div style="margin-top:.5rem">
-            <button id="premium-buy" class="primary-btn">Upgrade</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Experience & Legal -->
-    <section class="settings-section" aria-labelledby="ux-heading">
-      <h3 id="ux-heading">User experience</h3>
-
-      <label class="setting-row">
-        <span>Notifications</span>
-        <input type="checkbox" id="setting-notifications" checked />
-      </label>
-
-      <label class="setting-row">
-        <span>Appearance</span>
-        <div class="appearance-toggle" role="radiogroup" aria-label="Appearance">
-          <label><input type="radio" name="appearance" value="blue" checked /> Blue</label>
-          <label><input type="radio" name="appearance" value="red" /> Red</label>
-        </div>
-      </label>
-    </section>
-
-    <section class="settings-section help-legal-section" aria-labelledby="help-heading">
-      <h3 id="help-heading">Help & Support</h3>
-      <ul class="legal-list">
-        <li><a href="/help">Help Center / FAQs</a></li>
-        <li><a href="/report">Report a problem</a></li>
-        <li><a href="/contact">Contact support</a></li>
-      </ul>
-
-      <h3 class="legal-heading">Privacy & legal</h3>
-      <ul class="legal-list">
-        <li><a href="/privacy">Privacy Policy</a></li>
-        <li><a href="/terms">Terms of Service</a></li>
-      </ul>
-    </section>
-
-    <div class="settings-footer">
-      <small class="version">App version 1.0.0</small>
-      <div class="footer-actions">
-        <button id="reset-defaults" class="ghost-btn">Reset</button>
-        <button id="save-settings" class="primary-btn">Save</button>
-      </div>
-    </div>
-  </div>
-</aside>
 
 <!-- Account / Auth Modal (multi-step sign up & login) -->
 <div id="account-modal" class="modal hidden">
@@ -271,7 +365,7 @@
       <form id="signup-step1" class="auth-step">
         <label><input id="su-first" type="text" placeholder="First name" required /></label>
         <label><input id="su-last" type="text" placeholder="Last name" required /></label>
-        <label><input id="su-email" type="email" placeholder="Email" required /></label>
+        <label><input id="su-email" type="email" placeholder="Email" data-i18n-placeholder="email" required /></label>
         <label><input id="su-phone" type="tel" placeholder="Phone (optional)" /></label>
         <div style="display:flex;gap:.5rem;margin-top:.6rem">
           <button id="to-step2" type="button" class="primary-btn">Continue</button>
@@ -294,15 +388,15 @@
 
       <!-- Login form -->
       <form id="login-form" class="auth-step hidden">
-        <label><input id="li-username" type="text" placeholder="Username or email" required /></label>
+        <label><input id="li-email" type="email" placeholder="Email" required /></label>
         <label><input id="li-password" type="password" placeholder="Password" required /></label>
-        <div style="display:flex;gap:.5rem;margin-top:.6rem">
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
           <button id="login-final" type="button" class="primary-btn">Login</button>
           <button id="to-signup" type="button" class="ghost-btn">Don't have account</button>
         </div>
-
+        <button id="forgot-password" type="button" class="ghost-btn" style="margin-top:.6rem;width:100%">Forgot password?</button>
         <div style="margin-top:1rem;display:flex;gap:.5rem;align-items:center">
-          <button id="google-signin" class="ghost-btn" type="button">Sign in with Google</button>
+          <button id="google-signin" class="ghost-btn" type="button" style="width:100%">Sign in with Google</button>
         </div>
       </form>
 
@@ -311,31 +405,103 @@
   </div>
 </div>
 
+<!-- SETTINGS MODAL -->
+
+<div id="settings-modal" class="settings-modal hidden">
+
+    <div class="settings-overlay"></div>
+
+    <div class="settings-window">
+
+        <button id="close-settings" class="close-settings">
+            ✕
+        </button>
+
+        <div class="settings-header">
+            <h2>⚙️ Settings</h2>
+            <p>Customize your Snowwflix experience</p>
+        </div>
+
+        <div class="settings-body">
+
+            <div class="setting-item">
+                <span>🌙 Dark Mode</span>
+                <input type="checkbox" id="darkMode">
+            </div>
+
+            <div class="setting-item">
+                <span>🎬 Autoplay Trailers</span>
+                <input type="checkbox" id="autoplay" checked>
+            </div>
+
+            <div class="setting-item">
+                <span>🔔 Notifications</span>
+                <input type="checkbox" id="notifications" checked>
+            </div>
+
+            <div class="setting-item">
+                <span>✨ Animations</span>
+                <input type="checkbox" id="animations" checked>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 <!-- Toast notifications -->
 <div id="toast-wrap" style="position:fixed;right:1rem;bottom:1rem;z-index:1000"></div>
 
-<!-- Your firebase config + app -->
+<!-- Guest login nudge (shows after ~1 min if not signed in) -->
+<div id="login-nudge" class="login-nudge hidden" role="dialog" aria-label="Sign up prompt">
+  <button type="button" class="login-nudge-close" id="login-nudge-close" aria-label="Dismiss">✕</button>
+  <div class="login-nudge-icon">❄️</div>
+  <div class="login-nudge-body">
+    <strong>Enjoying Snowwflix?</strong>
+    <p>Sign up free to save favourites, sync history, and unlock more trailers.</p>
+    <div class="login-nudge-actions">
+      <button type="button" class="primary-btn" id="login-nudge-signup">Sign up free</button>
+      <button type="button" class="ghost-btn" id="login-nudge-login">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase config + initialization (trailers-7ffca / snoww web app) -->
 <script>
-  // === CONFIGURE THIS with your project's config ===
-  // If your Firebase console shows a different storageBucket value, update it here.
+  // === Snowwflix Firebase Config – project: trailers-7ffca ===
   const firebaseConfig = {
-    apiKey: "AIzaSyDc69XX6iC8fAr4c3qB35Kpyq6ju2hkcR8",
-    authDomain: "snowwflix.firebaseapp.com",
-    projectId: "snowwflix",
-    storageBucket: "snowwflix.appspot.com",
-    messagingSenderId: "877729232006",
-    appId: "1:877729232006:web:67c427c9a836959e834d07",
-    measurementId: "G-66M97LGMY9"
+    apiKey: "AIzaSyCBjGfxzkCw9DVSfYIqWzrBkGwtAkfgd18",
+    authDomain: "trailers-7ffca.firebaseapp.com",
+    projectId: "trailers-7ffca",
+    storageBucket: "trailers-7ffca.firebasestorage.app",
+    messagingSenderId: "197034717747",
+    appId: "1:197034717747:web:3b683557cb8f2024b0e946",
+    measurementId: "G-0GDJRDEJT1"
   };
 
-  // Initialize Firebase (global SDK)
+  // Initialize Firebase (compat SDK)
   const app = firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = (firebase && firebase.firestore) ? firebase.firestore() : null;
   const storage = (firebase && firebase.storage) ? firebase.storage() : null;
+
+  // Expose globally for auth.js, app.js, settings.js, etc.
+  window.auth = auth;
+  window.db = db;
+  window.storage = storage;
+
+  console.log("Firebase ready → project:", firebaseConfig.projectId);
 </script>
 
 <!-- Main app code -->
+
+<div id="settings-panel"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
 <script src="app.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/settings.js"></script>
+
 </body>
 </html>

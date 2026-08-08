@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snowwflix – Privacy Policy</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    :root {
+      --bg: #0b0b10;
+      --card: #161b22;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --primary: #4da3ff;
+      --border: #30363d;
+      --danger: #f85149;
+      --success: #3fb950;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      line-height: 1.65;
+      min-height: 100vh;
+    }
+    .privacy-page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 100px;
+    }
+    .privacy-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 36px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .privacy-topbar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .privacy-topbar .brand span {
+      background: linear-gradient(90deg, #9ad7ff, #fff, #9ad7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .back-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.95rem;
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .back-link:hover { background: #21262d; }
+    .privacy-header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    .privacy-updated {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 28px;
+    }
+    h2 {
+      margin: 40px 0 14px;
+      font-size: 1.35rem;
+      font-weight: 650;
+      color: #f0f6fc;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 8px;
+    }
+    h3 {
+      margin: 28px 0 10px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+    p { margin: 0 0 14px; color: #c9d1d9; }
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin: 16px 0 24px;
+    }
+    .faq-item {
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .faq-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .faq-item strong {
+      display: block;
+      color: #f0f6fc;
+      margin-bottom: 6px;
+    }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .contact-item {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .contact-item .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+    .contact-item a, .contact-item span {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      word-break: break-all;
+    }
+    .contact-item a:hover { text-decoration: underline; }
+    .agree-box {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      padding: 18px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 50;
+    }
+    .agree-box p {
+      margin: 0;
+      max-width: 480px;
+      font-size: 0.92rem;
+      color: #c9d1d9;
+    }
+    .agree-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-agree {
+      background: linear-gradient(180deg, #4da3ff, #2d7dd2);
+      color: #0a0f1e;
+    }
+    .btn-decline {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-decline:hover { background: rgba(248, 81, 73, 0.12); }
+    .blocked-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0b0b10;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .blocked-overlay.show { display: flex; }
+    .blocked-box {
+      max-width: 480px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 28px;
+    }
+    .blocked-box h2 {
+      margin: 0 0 12px;
+      border: none;
+      color: var(--danger);
+    }
+    .blocked-box p { margin-bottom: 20px; }
+    .nav-anchors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px 0 28px;
+    }
+    .nav-anchors a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .nav-anchors a:hover { background: #21262d; }
+    @media (max-width: 600px) {
+      .privacy-header h1 { font-size: 1.5rem; }
+      .agree-box { flex-direction: column; align-items: stretch; }
+      .agree-actions { justify-content: stretch; }
+      .btn { flex: 1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="privacy-page" id="privacy-content">
+    <div class="privacy-topbar">
+      <div class="brand">❄ <span>SNOWWFLIX</span></div>
+      <a class="back-link" href="index.html" id="top-back-link">← Back to App</a>
+    </div>
+
+    <div class="privacy-header">
+      <h1>Privacy Policy</h1>
+      <p class="privacy-updated">Last updated: August 2026</p>
+    </div>
+
+    <div class="nav-anchors">
+      <a href="#policy">Policy</a>
+      <a href="#faqs">FAQs</a>
+      <a href="#contact">Contact & Support</a>
+    </div>
+
+    <!-- ========== POLICY ========== -->
+    <section id="policy">
+      <p>Welcome to Snowwflix. Your privacy is important to us, and we are committed to protecting the personal information you share while using our platform. This Privacy Policy explains what information we collect, how we use it, how we protect it, and the choices you have regarding your personal data.</p>
+
+      <h3>Information We Collect</h3>
+      <p>When you create a Snowwflix account, we may collect information such as your name, email address, profile picture, and account preferences. We also collect information related to your activity on the platform, including your watch history, saved favorites, search history, and viewing preferences. This information helps us personalize your experience and recommend content that matches your interests.</p>
+      <p>Snowwflix may also collect technical information such as your device type, browser version, operating system, IP address, language settings, and general usage statistics. These details help us improve performance, diagnose technical issues, enhance security, and provide a better overall user experience.</p>
+
+      <h3>How We Use Your Information</h3>
+      <p>We use the information we collect to operate and maintain Snowwflix, provide customer support, improve existing features, develop new services, send important account notifications, and protect the platform from fraud or unauthorized access. We do not sell your personal information to third parties.</p>
+
+      <h3>How We Protect Your Information</h3>
+      <p>Your information is stored using appropriate security measures designed to protect it against unauthorized access, loss, misuse, or disclosure. While we work hard to keep your data secure, no online service can guarantee absolute security, and users should also take reasonable steps to protect their account credentials.</p>
+
+      <h3>Cookies and Similar Technologies</h3>
+      <p>Snowwflix may use cookies or similar technologies to remember your preferences, keep you signed in, analyze platform usage, and improve site functionality. You can manage or disable cookies through your browser settings, although doing so may affect certain features of the platform.</p>
+
+      <h3>Your Choices and Rights</h3>
+      <p>You have control over your personal information. You may update your account details, change your profile settings, or request the deletion of your account at any time. If you choose to delete your account, we will make reasonable efforts to remove your personal information in accordance with applicable laws and operational requirements.</p>
+
+      <h3>Changes to This Policy</h3>
+      <p>Snowwflix may update this Privacy Policy from time to time as our services evolve or legal requirements change. Any significant updates will be communicated through the platform, and the revised policy will become effective once published.</p>
+
+      <h3>Contact Us</h3>
+      <p>If you have questions, concerns, or requests regarding this Privacy Policy or your personal information, please contact the Snowwflix Support Team using the details in the Contact & Support section below.</p>
+
+      <div class="section-card">
+        <p style="margin:0;color:#e6edf3;font-weight:500;">By creating an account or continuing to use Snowwflix, you acknowledge that you have read and understood this Privacy Policy and agree to the collection and use of your information as described above.</p>
+      </div>
+    </section>
+
+    <!-- ========== FAQs ========== -->
+    <section id="faqs">
+      <h2>Frequently Asked Questions</h2>
+      <div class="section-card">
+        <div class="faq-item">
+          <strong>Do I have to accept the Privacy Policy to use Snowwflix?</strong>
+          <p>We ask you to read and accept this Privacy Policy so you understand how we collect and use your information. Accepting records your consent. You can open the app and review this page anytime from Settings → Privacy & Legal.</p>
+        </div>
+        <div class="faq-item">
+          <strong>What happens if I decline?</strong>
+          <p>If you decline, your choice is recorded on this page. You can still return to the Snowwflix app. Some personalized features that rely on cookies and account data work best when you accept the policy. You can change your mind and accept later.</p>
+        </div>
+        <div class="faq-item">
+          <strong>Do you sell my personal data?</strong>
+          <p>No. Snowwflix does not sell your personal information to third parties.</p>
+        </div>
+        <div class="faq-item">
+          <strong>Can I delete my account and data?</strong>
+          <p>Yes. You may request account deletion at any time from your account settings or by contacting support. We will make reasonable efforts to remove your personal information in accordance with applicable laws.</p>
+        </div>
+        <div class="faq-item">
+          <strong>How do I manage cookies?</strong>
+          <p>You can manage or disable cookies through your browser settings. Note that disabling certain cookies may affect sign-in, preferences, and other features of the platform.</p>
+        </div>
+        <div class="faq-item">
+          <strong>How can I contact support?</strong>
+          <p>Scroll to the Contact & Support section below for email, phone, social links, and location.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== CONTACT & SUPPORT ========== -->
+    <section id="contact">
+      <h2>Contact & Support</h2>
+      <p>Reach the Snowwflix team through any of the channels below.</p>
+      <div class="contact-grid">
+        <div class="contact-item">
+          <div class="label">Email</div>
+          <a href="mailto:lordesnoww@gmail.com">lordesnoww@gmail.com</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">Phone</div>
+          <a href="tel:+254711414071">+254 711 414 071</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">Location</div>
+          <span style="color:#c9d1d9;">Nairobi, Kenya</span>
+        </div>
+        <div class="contact-item">
+          <div class="label">Instagram</div>
+          <a href="https://www.instagram.com/snowwflix/?hl=en" target="_blank" rel="noopener">@snowwflix</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">X (Twitter)</div>
+          <a href="https://x.com/SNOWWFLIX" target="_blank" rel="noopener">@SNOWWFLIX</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">Facebook</div>
+          <a href="https://www.facebook.com/profile.php?id=61592722932826" target="_blank" rel="noopener">Snowwflix</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">TikTok</div>
+          <a href="https://www.tiktok.com/@snowwflix" target="_blank" rel="noopener">@snowwflix</a>
+        </div>
+        <div class="contact-item">
+          <div class="label">YouTube</div>
+          <a href="https://www.youtube.com/@SNOWWFLIX" target="_blank" rel="noopener">@SNOWWFLIX</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sticky Agree / Decline bar -->
+  <div class="agree-box" id="agree-bar">
+    <p>I have read and understood the Snowwflix Privacy Policy. I agree to the collection and use of my information as described.</p>
+    <div class="agree-actions">
+      <button class="btn btn-decline" id="btn-decline" type="button">Decline</button>
+      <button class="btn btn-agree" id="btn-agree" type="button">I Agree – Continue to Snowwflix</button>
+    </div>
+  </div>
+
+  <!-- Blocked state when user declines -->
+  <div class="blocked-overlay" id="blocked-overlay">
+    <div class="blocked-box">
+      <h2>You Declined</h2>
+      <p>You declined the Snowwflix Privacy Policy. Your choice has been recorded. You can still return to the app, or accept the policy below if you change your mind.</p>
+      <div class="agree-actions" style="justify-content:center;margin-top:16px;flex-wrap:wrap;gap:12px;">
+        <button class="btn btn-agree" id="btn-reaccept" type="button">Accept Privacy Policy</button>
+        <a class="btn" href="index.html" style="background:#21262d;color:#e6edf3;text-decoration:none;display:inline-block;">← Back to Snowwflix</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "snowwflix_privacy_accepted";
+    const DECLINED_KEY = "snowwflix_privacy_declined";
+
+    const agreeBar = document.getElementById("agree-bar");
+    const blockedOverlay = document.getElementById("blocked-overlay");
+    const btnAgree = document.getElementById("btn-agree");
+    const btnDecline = document.getElementById("btn-decline");
+    const btnReaccept = document.getElementById("btn-reaccept");
+    const topBack = document.getElementById("top-back-link");
+
+    function isAccepted() {
+      return localStorage.getItem(STORAGE_KEY) === "true";
+    }
+
+    function isDeclined() {
+      return localStorage.getItem(DECLINED_KEY) === "true";
+    }
+
+    function acceptPolicy() {
+      localStorage.setItem(STORAGE_KEY, "true");
+      localStorage.removeItem(DECLINED_KEY);
+      // Go back to the main app
+      window.location.href = "index.html";
+    }
+
+    function declinePolicy() {
+      localStorage.setItem(DECLINED_KEY, "true");
+      localStorage.removeItem(STORAGE_KEY);
+      blockedOverlay.classList.add("show");
+      agreeBar.style.display = "none";
+    }
+
+    function showBlockedIfNeeded() {
+      if (isDeclined() && !isAccepted()) {
+        blockedOverlay.classList.add("show");
+        agreeBar.style.display = "none";
+      } else if (isAccepted()) {
+        // Already accepted – still allow reading, but hide force-agree or show softer UI
+        btnAgree.textContent = "Already Accepted – Back to App";
+      }
+    }
+
+    btnAgree.addEventListener("click", acceptPolicy);
+    btnDecline.addEventListener("click", declinePolicy);
+    btnReaccept.addEventListener("click", acceptPolicy);
+
+    // Back to App always works — user opens app first, then privacy from Settings
+    // No forced redirect; privacy page is optional from Settings
+
+    showBlockedIfNeeded();
+  </script>
+</body>
+</html>

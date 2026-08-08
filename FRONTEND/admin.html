@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Snowwflix Admin · Users</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    :root { --bg:#0b0f1a; --card:#141a28; --line:rgba(255,255,255,.08); --text:#e8eef8; --muted:#8b949e; --accent:#4da3ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+    .sub { color: var(--muted); margin: 0 0 1.25rem; font-size: .9rem; }
+    .bar { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-bottom:1.25rem; }
+    .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.75rem 1rem; min-width:120px; }
+    .stat b { display:block; font-size:1.35rem; }
+    .stat span { color:var(--muted); font-size:.75rem; }
+    button, .btn {
+      background: linear-gradient(180deg, #4da3ff, #2b7de0); border:0; color:#fff;
+      font-weight:600; padding:.55rem 1rem; border-radius:10px; cursor:pointer;
+    }
+    button.ghost { background: transparent; border:1px solid var(--line); color:var(--text); }
+    table { width:100%; border-collapse: collapse; background:var(--card); border-radius:14px; overflow:hidden; border:1px solid var(--line); }
+    th, td { text-align:left; padding:.75rem .9rem; border-bottom:1px solid var(--line); font-size:.88rem; }
+    th { background:#0f1522; color:var(--muted); font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:0; }
+    .badge { display:inline-block; padding:.15rem .45rem; border-radius:6px; font-size:.7rem; font-weight:700; }
+    .ok { background:rgba(46,204,113,.15); color:#2ecc71; }
+    .no { background:rgba(231,76,60,.15); color:#e74c3c; }
+    .msg { color:var(--muted); padding:2rem; text-align:center; }
+    a.back { color:var(--accent); text-decoration:none; font-size:.9rem; }
+    input[type=email], input[type=password] {
+      background:#0c1220; border:1px solid var(--line); color:var(--text);
+      padding:.55rem .75rem; border-radius:8px; min-width:220px;
+    }
+    #gate { max-width:380px; margin:4rem auto; background:var(--card); padding:1.5rem; border-radius:14px; border:1px solid var(--line); }
+    #gate label { display:block; margin-bottom:.75rem; font-size:.85rem; color:var(--muted); }
+    #gate input { width:100%; margin-top:.35rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← Back to Snowwflix</a>
+    <h1 style="margin-top:1rem">👥 Registered users</h1>
+    <p class="sub">People who signed up or logged in (from Firestore <code>users</code> collection).</p>
+
+    <div id="gate">
+      <p style="margin-top:0">Sign in with your admin account to view the list.</p>
+      <label>Email <input id="admin-email" type="email" placeholder="you@email.com" /></label>
+      <label>Password <input id="admin-pass" type="password" placeholder="••••••••" /></label>
+      <button id="admin-login" type="button" style="width:100%;margin-top:.5rem">Sign in</button>
+      <p id="gate-msg" class="msg" style="padding:.75rem 0 0;font-size:.85rem"></p>
+    </div>
+
+    <div id="panel" class="hidden" style="display:none">
+      <div class="bar">
+        <div class="stat"><b id="count-total">0</b><span>Total users</span></div>
+        <div class="stat"><b id="count-verified">0</b><span>Email verified</span></div>
+        <button type="button" id="refresh-users">Refresh</button>
+        <button type="button" class="ghost" id="admin-logout">Log out</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Provider</th>
+              <th>Verified</th>
+              <th>Last login</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr><td colspan="6" class="msg">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCBjGfxzkCw9DVSfYIqWzrBkGwtAkfgd18",
+      authDomain: "trailers-7ffca.firebaseapp.com",
+      projectId: "trailers-7ffca",
+      storageBucket: "trailers-7ffca.firebasestorage.app",
+      messagingSenderId: "197034717747",
+      appId: "1:197034717747:web:3b683557cb8f2024b0e946"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const gate = document.getElementById("gate");
+    const panel = document.getElementById("panel");
+    const gateMsg = document.getElementById("gate-msg");
+
+    function fmt(ts) {
+      if (!ts) return "—";
+      try {
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleString();
+      } catch { return "—"; }
+    }
+
+    async function loadUsers() {
+      const tbody = document.getElementById("users-body");
+      tbody.innerHTML = '<tr><td colspan="6" class="msg">Loading…</td></tr>';
+      try {
+        const snap = await db.collection("users").orderBy("lastLogin", "desc").limit(200).get();
+        // Fallback if index missing
+        let docs = snap.docs;
+        if (docs.length === 0) {
+          const all = await db.collection("users").limit(200).get();
+          docs = all.docs;
+        }
+        let verified = 0;
+        if (!docs.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="msg">No users yet. Sign-ups will appear here.</td></tr>';
+        } else {
+          tbody.innerHTML = "";
+          docs.forEach((doc) => {
+            const u = doc.data() || {};
+            if (u.emailVerified) verified++;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${u.displayName || u.username || [u.firstName, u.lastName].filter(Boolean).join(" ") || "—"}</td>
+              <td>${u.email || "—"}</td>
+              <td>${u.provider || "—"}</td>
+              <td><span class="badge ${u.emailVerified ? "ok" : "no"}">${u.emailVerified ? "Yes" : "No"}</span></td>
+              <td>${fmt(u.lastLogin)}</td>
+              <td>${fmt(u.createdAt)}</td>`;
+            tbody.appendChild(tr);
+          });
+        }
+        document.getElementById("count-total").textContent = String(docs.length);
+        document.getElementById("count-verified").textContent = String(verified);
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="6" class="msg">Could not load users. Check Firestore rules allow read on <code>users</code>.<br><small>${err.message || err}</small></td></tr>`;
+      }
+    }
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        gate.style.display = "none";
+        panel.style.display = "block";
+        loadUsers();
+      } else {
+        gate.style.display = "block";
+        panel.style.display = "none";
+      }
+    });
+
+    document.getElementById("admin-login")?.addEventListener("click", async () => {
+      const email = document.getElementById("admin-email").value.trim();
+      const pass = document.getElementById("admin-pass").value;
+      gateMsg.textContent = "Signing in…";
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        gateMsg.textContent = "";
+      } catch (e) {
+        gateMsg.textContent = e.message || "Login failed";
+      }
+    });
+    document.getElementById("admin-logout")?.addEventListener("click", () => auth.signOut());
+    document.getElementById("refresh-users")?.addEventListener("click", loadUsers);
+  </script>
+</body>
+</html>
