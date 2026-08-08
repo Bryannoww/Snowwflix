@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Snowwflix Admin · Users</title>
+  <title>Snowwflix Admin · Users & Ratings</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
-    :root { --bg:#0b0f1a; --card:#141a28; --line:rgba(255,255,255,.08); --text:#e8eef8; --muted:#8b949e; --accent:#4da3ff; }
+    :root { --bg:#0b0f1a; --card:#141a28; --line:rgba(255,255,255,.08); --text:#e8eef8; --muted:#8b949e; --accent:#4da3ff; --gold:#f5c518; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
     h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+    h2 { font-size: 1.1rem; margin: 2rem 0 .75rem; }
     .sub { color: var(--muted); margin: 0 0 1.25rem; font-size: .9rem; }
     .bar { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-bottom:1.25rem; }
     .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.75rem 1rem; min-width:120px; }
@@ -31,6 +32,7 @@
     .badge { display:inline-block; padding:.15rem .45rem; border-radius:6px; font-size:.7rem; font-weight:700; }
     .ok { background:rgba(46,204,113,.15); color:#2ecc71; }
     .no { background:rgba(231,76,60,.15); color:#e74c3c; }
+    .stars { color: var(--gold); letter-spacing: 1px; font-weight: 700; }
     .msg { color:var(--muted); padding:2rem; text-align:center; }
     a.back { color:var(--accent); text-decoration:none; font-size:.9rem; }
     input[type=email], input[type=password] {
@@ -40,16 +42,22 @@
     #gate { max-width:380px; margin:4rem auto; background:var(--card); padding:1.5rem; border-radius:14px; border:1px solid var(--line); }
     #gate label { display:block; margin-bottom:.75rem; font-size:.85rem; color:var(--muted); }
     #gate input { width:100%; margin-top:.35rem; }
+    .tabs { display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .tabs button.active { box-shadow: 0 0 0 2px rgba(77,163,255,.4); }
+    .section { display: none; }
+    .section.active { display: block; }
+    .hint { background: rgba(77,163,255,.08); border: 1px solid rgba(77,163,255,.2); border-radius: 10px; padding: .75rem 1rem; font-size: .85rem; color: var(--muted); margin-bottom: 1rem; }
+    .hint code { color: var(--accent); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <a class="back" href="index.html">← Back to Snowwflix</a>
-    <h1 style="margin-top:1rem">👥 Registered users</h1>
-    <p class="sub">People who signed up or logged in (from Firestore <code>users</code> collection).</p>
+    <h1 style="margin-top:1rem">Snowwflix Admin</h1>
+    <p class="sub">Users and star ratings stored in Firebase Firestore (project <code>trailers-7ffca</code>).</p>
 
     <div id="gate">
-      <p style="margin-top:0">Sign in with your admin account to view the list.</p>
+      <p style="margin-top:0">Sign in with any account that can read Firestore (your owner login).</p>
       <label>Email <input id="admin-email" type="email" placeholder="you@email.com" /></label>
       <label>Password <input id="admin-pass" type="password" placeholder="••••••••" /></label>
       <button id="admin-login" type="button" style="width:100%;margin-top:.5rem">Sign in</button>
@@ -60,25 +68,61 @@
       <div class="bar">
         <div class="stat"><b id="count-total">0</b><span>Total users</span></div>
         <div class="stat"><b id="count-verified">0</b><span>Email verified</span></div>
-        <button type="button" id="refresh-users">Refresh</button>
+        <div class="stat"><b id="count-ratings">0</b><span>Ratings</span></div>
+        <div class="stat"><b id="count-avg">—</b><span>Avg stars</span></div>
+        <button type="button" id="refresh-all">Refresh</button>
         <button type="button" class="ghost" id="admin-logout">Log out</button>
       </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Provider</th>
-              <th>Verified</th>
-              <th>Last login</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody id="users-body">
-            <tr><td colspan="6" class="msg">Loading…</td></tr>
-          </tbody>
-        </table>
+
+      <div class="hint">
+        Data lives in Firestore collections <code>users</code> and <code>ratings</code>.
+        You can also browse them in
+        <a href="https://console.firebase.google.com/project/trailers-7ffca/firestore" target="_blank" rel="noopener" style="color:var(--accent)">Firebase Console → Firestore</a>.
+        Email is <strong>not</strong> used for every login — only optional mailto on some 5★ ratings.
+      </div>
+
+      <div class="tabs">
+        <button type="button" class="active" data-tab="users">👥 Users</button>
+        <button type="button" data-tab="ratings">⭐ Ratings</button>
+      </div>
+
+      <div id="section-users" class="section active">
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Provider</th>
+                <th>Verified</th>
+                <th>Last login</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="users-body">
+              <tr><td colspan="6" class="msg">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="section-ratings" class="section">
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Stars</th>
+                <th>Name / Email</th>
+                <th>Source</th>
+                <th>UID</th>
+                <th>When</th>
+              </tr>
+            </thead>
+            <tbody id="ratings-body">
+              <tr><td colspan="5" class="msg">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -108,20 +152,30 @@
       } catch { return "—"; }
     }
 
+    function starsHtml(n) {
+      const r = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+      return '<span class="stars">' + "★".repeat(r) + "☆".repeat(5 - r) + "</span> <small>(" + r + ")</small>";
+    }
+
     async function loadUsers() {
       const tbody = document.getElementById("users-body");
       tbody.innerHTML = '<tr><td colspan="6" class="msg">Loading…</td></tr>';
       try {
-        const snap = await db.collection("users").orderBy("lastLogin", "desc").limit(200).get();
-        // Fallback if index missing
-        let docs = snap.docs;
-        if (docs.length === 0) {
-          const all = await db.collection("users").limit(200).get();
+        let docs = [];
+        try {
+          const snap = await db.collection("users").orderBy("lastLogin", "desc").limit(300).get();
+          docs = snap.docs;
+        } catch (_) {
+          const all = await db.collection("users").limit(300).get();
+          docs = all.docs;
+        }
+        if (!docs.length) {
+          const all = await db.collection("users").limit(300).get();
           docs = all.docs;
         }
         let verified = 0;
         if (!docs.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="msg">No users yet. Sign-ups will appear here.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" class="msg">No users yet. Sign-ups will appear here after people create accounts.</td></tr>';
         } else {
           tbody.innerHTML = "";
           docs.forEach((doc) => {
@@ -131,7 +185,7 @@
             tr.innerHTML = `
               <td>${u.displayName || u.username || [u.firstName, u.lastName].filter(Boolean).join(" ") || "—"}</td>
               <td>${u.email || "—"}</td>
-              <td>${u.provider || "—"}</td>
+              <td>${u.provider || "email"}</td>
               <td><span class="badge ${u.emailVerified ? "ok" : "no"}">${u.emailVerified ? "Yes" : "No"}</span></td>
               <td>${fmt(u.lastLogin)}</td>
               <td>${fmt(u.createdAt)}</td>`;
@@ -146,11 +200,68 @@
       }
     }
 
+    async function loadRatings() {
+      const tbody = document.getElementById("ratings-body");
+      tbody.innerHTML = '<tr><td colspan="5" class="msg">Loading…</td></tr>';
+      try {
+        let docs = [];
+        try {
+          const snap = await db.collection("ratings").orderBy("createdAt", "desc").limit(300).get();
+          docs = snap.docs;
+        } catch (_) {
+          const all = await db.collection("ratings").limit(300).get();
+          docs = all.docs;
+        }
+        if (!docs.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="msg">No ratings yet. Stars from Settings or the rating prompt are saved here.</td></tr>';
+          document.getElementById("count-ratings").textContent = "0";
+          document.getElementById("count-avg").textContent = "—";
+          return;
+        }
+        tbody.innerHTML = "";
+        let sum = 0;
+        docs.forEach((doc) => {
+          const r = doc.data() || {};
+          const stars = parseInt(r.rating, 10) || 0;
+          sum += stars;
+          const who = r.displayName || r.email || "Guest";
+          const email = r.email && r.displayName ? r.email : (r.email || "—");
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${starsHtml(stars)}</td>
+            <td><strong>${who}</strong><br><small style="color:var(--muted)">${email}</small></td>
+            <td>${r.source || "—"}</td>
+            <td><small style="color:var(--muted)">${(r.uid || "—").toString().slice(0, 12)}</small></td>
+            <td>${fmt(r.createdAt)}</td>`;
+          tbody.appendChild(tr);
+        });
+        document.getElementById("count-ratings").textContent = String(docs.length);
+        document.getElementById("count-avg").textContent = (sum / docs.length).toFixed(1) + "★";
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="5" class="msg">Could not load ratings. Check Firestore rules allow read on <code>ratings</code>.<br><small>${err.message || err}</small></td></tr>`;
+      }
+    }
+
+    function loadAll() {
+      loadUsers();
+      loadRatings();
+    }
+
+    document.querySelectorAll(".tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
+        document.getElementById("section-" + btn.getAttribute("data-tab"))?.classList.add("active");
+      });
+    });
+
     auth.onAuthStateChanged((user) => {
       if (user) {
         gate.style.display = "none";
         panel.style.display = "block";
-        loadUsers();
+        loadAll();
       } else {
         gate.style.display = "block";
         panel.style.display = "none";
@@ -169,7 +280,7 @@
       }
     });
     document.getElementById("admin-logout")?.addEventListener("click", () => auth.signOut());
-    document.getElementById("refresh-users")?.addEventListener("click", loadUsers);
+    document.getElementById("refresh-all")?.addEventListener("click", loadAll);
   </script>
 </body>
 </html>
