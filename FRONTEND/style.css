@@ -265,8 +265,9 @@ body.theme-red .logo-art{background:linear-gradient(90deg,#ffb3b3,#fff,#ffb3b3);
  }
 
 
- .primary-btn,
- .ghost-btn{
+ /* Do NOT force navbar search / icon buttons to full width */
+ .primary-btn:not(.top-search-btn):not(.sf-pbtn):not(.menu-btn):not(.theme-toggle):not(.profile-chip),
+ .ghost-btn:not(.sf-pbtn){
     width:100%;
  }
 
@@ -338,9 +339,24 @@ body.theme-red .logo-art{background:linear-gradient(90deg,#ffb3b3,#fff,#ffb3b3);
     font-size: 22px;
   }
 
-  button {
+  /* Never force every button to 100% — that collapsed the search input */
+  button:not(.top-search-btn):not(.sf-pbtn):not(.menu-btn):not(.theme-toggle):not(.profile-chip):not(.cat-chip):not(.nav-auth-btn):not(.close-x) {
     width: 100%;
     margin-top: 8px;
+  }
+
+  /* Explicit: search row stays input + compact button side by side */
+  .nav-search,
+  .nav-search button,
+  .top-search-btn {
+    width: auto !important;
+    margin-top: 0 !important;
+  }
+  .top-search-input {
+    width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 
 }
@@ -1770,10 +1786,24 @@ body.theme-light .cat-chip.active {
   gap: 0.5rem;
   max-width: 480px;
   margin: 0 auto;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.top-search-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
 }
 .top-search-input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 0.55rem 0.9rem;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.12);
@@ -1781,6 +1811,16 @@ body.theme-light .cat-chip.active {
   color: #fff;
   font-size: 0.92rem;
   outline: none;
+  /* Prevent browser default search field chrome from breaking the pill */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.top-search-input::-webkit-search-decoration,
+.top-search-input::-webkit-search-cancel-button,
+.top-search-input::-webkit-search-results-button,
+.top-search-input::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
 }
 .top-search-input:focus {
   border-color: var(--primary);
@@ -1793,13 +1833,33 @@ body.theme-light .cat-chip.active {
 }
 
 @media (max-width: 720px) {
-  .nav-search { max-width: none; gap: 0.35rem; }
+  .nav-search {
+    max-width: none !important;
+    width: 100% !important;
+    gap: 0.4rem;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .top-search-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+  .top-search-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
   /* Keep Search visible on mobile — users need a clear way to submit */
   .top-search-btn {
     display: inline-flex !important;
     align-items: center;
+    justify-content: center;
     padding: 0.45rem 0.75rem !important;
     font-size: 0.85rem !important;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 }
 
@@ -3278,20 +3338,32 @@ body.theme-light .account-field input {
     order: 3;
     flex: 1 1 100%;
     max-width: none !important;
-    width: 100%;
+    width: 100% !important;
     margin-top: 0.25rem;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+    box-sizing: border-box;
+    min-width: 0;
   }
   .top-search-wrap {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
   }
   .top-search-input {
     font-size: 16px !important; /* prevent iOS zoom */
     min-height: 42px;
-    border-radius: 12px;
+    border-radius: 999px;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
   .top-search-btn {
     min-height: 42px;
     padding: 0 14px;
+    flex-shrink: 0;
   }
   .category-nav {
     overflow-x: auto;
@@ -3939,4 +4011,174 @@ body.sf-player-fs-active {
 }
 .row-block:not(.hidden):not(.row-filtered-out) {
   display: block !important;
+}
+
+/* ========== Mobile fullscreen + orientation ========== */
+/* When phone is landscape (or orientation locked), fill the screen cleanly */
+@media (max-width: 900px) and (orientation: landscape) {
+  .sf-player.sf-fs-fallback,
+  .sf-player.is-fullscreen,
+  .sf-player:fullscreen,
+  .sf-player:-webkit-full-screen {
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+  .sf-player.sf-fs-fallback .sf-player-top,
+  .sf-player.is-fullscreen .sf-player-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .sf-player.sf-fs-fallback .sf-player-bottom,
+  .sf-player.is-fullscreen .sf-player-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* Portrait phone fullscreen: still fill viewport (until OS rotates) */
+@media (max-width: 900px) and (orientation: portrait) {
+  .sf-player.sf-fs-fallback,
+  .sf-player.is-fullscreen {
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+  /* Stage keeps 16:9 letterbox-friendly fill */
+  .sf-player.sf-fs-fallback .sf-player-stage,
+  .sf-player.is-fullscreen .sf-player-stage {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+}
+
+/* Search bar: ensure full-bleed fit on very small phones */
+@media (max-width: 480px) {
+  .navbar {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  .nav-search {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+  .top-search-input {
+    border-radius: 999px !important;
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+  .top-search-btn {
+    padding: 0.4rem 0.65rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* ========== SEARCH BAR FIX (input must always be typeable) ========== */
+.nav-search {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  flex-wrap: nowrap !important;
+}
+.top-search-wrap {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: block !important;
+  position: relative !important;
+}
+.top-search-input,
+input#top-search.top-search-input {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 42px !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  background: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
+  padding: 0.55rem 1rem !important;
+  font-size: 16px !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+.top-search-btn,
+button#top-search-btn.top-search-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 4.5rem !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  border-radius: 999px !important;
+}
+
+@media (max-width: 768px) {
+  .nav-search {
+    order: 3 !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 0.35rem !important;
+  }
+  .top-search-wrap {
+    flex: 1 1 auto !important;
+    min-width: 8rem !important;
+  }
+  .top-search-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    padding: 0.5rem 0.85rem !important;
+  }
+}
+
+/* ========== Force landscape on phone when OS blocks orientation.lock ========== */
+html.sf-force-landscape,
+html.sf-force-landscape body {
+  overflow: hidden !important;
+}
+/* Rotate the player 90° so video plays landscape while phone stays portrait */
+.sf-player.sf-force-landscape.sf-fs-fallback,
+.sf-player.sf-force-landscape.is-fullscreen,
+.sf-player-modal.sf-force-landscape .sf-player.sf-fs-fallback,
+.sf-player-modal.sf-force-landscape .sf-player.is-fullscreen {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 100dvh !important;
+  height: 100dvw !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: translate(-50%, -50%) rotate(90deg) !important;
+  transform-origin: center center !important;
+  z-index: 100000 !important;
+  inset: auto !important;
+}
+.sf-player-modal.sf-force-landscape {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+/* When device is already landscape, don't apply the CSS rotate */
+@media (orientation: landscape) {
+  .sf-player.sf-force-landscape.sf-fs-fallback,
+  .sf-player.sf-force-landscape.is-fullscreen,
+  .sf-player-modal.sf-force-landscape .sf-player.sf-fs-fallback,
+  .sf-player-modal.sf-force-landscape .sf-player.is-fullscreen {
+    transform: none !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100dvw !important;
+    height: 100dvh !important;
+    inset: 0 !important;
+  }
 }

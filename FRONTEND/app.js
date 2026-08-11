@@ -978,6 +978,8 @@ function closeTrailerPlayer() {
     modal.classList.add("hidden");
     modal.classList.remove("sf-minimized");
   }
+  // Leave fullscreen + unlock orientation if user closes while FS
+  try { exitPlayerFullscreen(); } catch (_) {}
   hideEndedOverlay();
   destroyYt();
   stopProgressLoop();
@@ -1360,6 +1362,93 @@ function togglePlayerChrome() {
   else hidePlayerChrome();
 }
 
+/** True for phones/tablets (touch + narrow), not laptop/desktop */
+function isMobileDevice() {
+  try {
+    const ua = navigator.userAgent || "";
+    if (/Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
+    const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    const narrow = Math.min(window.innerWidth, window.innerHeight) <= 900;
+    const touch = (navigator.maxTouchPoints || 0) > 0 || "ontouchstart" in window;
+    // Phones/tablets only — exclude desktop with touch screens when viewport is large
+    if (touch && narrow) return true;
+    if (coarse && narrow) return true;
+    return false;
+  } catch (_) {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  }
+}
+
+function applyCssLandscapeFallback() {
+  if (!isMobileDevice()) return;
+  const stage = document.getElementById("player-surface");
+  const modal = document.getElementById("trailer-modal");
+  // If still portrait after lock attempt, force landscape via CSS transform
+  const portrait = window.matchMedia && window.matchMedia("(orientation: portrait)").matches;
+  if (portrait) {
+    stage?.classList.add("sf-force-landscape");
+    modal?.classList.add("sf-force-landscape");
+    document.documentElement.classList.add("sf-force-landscape");
+  } else {
+    stage?.classList.remove("sf-force-landscape");
+    modal?.classList.remove("sf-force-landscape");
+    document.documentElement.classList.remove("sf-force-landscape");
+  }
+}
+
+function clearCssLandscapeFallback() {
+  document.getElementById("player-surface")?.classList.remove("sf-force-landscape");
+  document.getElementById("trailer-modal")?.classList.remove("sf-force-landscape");
+  document.documentElement.classList.remove("sf-force-landscape");
+}
+
+function lockLandscapeIfMobile() {
+  if (!isMobileDevice()) return;
+  const tryLock = function (mode) {
+    try {
+      const o = screen.orientation;
+      if (o && typeof o.lock === "function") {
+        return o.lock(mode);
+      }
+    } catch (_) {}
+    return Promise.reject();
+  };
+  // Must be called while in fullscreen context on most browsers
+  Promise.resolve()
+    .then(function () { return tryLock("landscape"); })
+    .catch(function () { return tryLock("landscape-primary"); })
+    .catch(function () { return tryLock("landscape-secondary"); })
+    .catch(function () {
+      try {
+        if (screen.lockOrientation) screen.lockOrientation("landscape");
+        else if (screen.mozLockOrientation) screen.mozLockOrientation("landscape");
+        else if (screen.msLockOrientation) screen.msLockOrientation("landscape");
+      } catch (_) {}
+    })
+    .finally(function () {
+      // If OS refused lock (common on iOS), use CSS rotate fallback
+      setTimeout(applyCssLandscapeFallback, 120);
+      setTimeout(applyCssLandscapeFallback, 400);
+    });
+}
+
+function unlockOrientationIfMobile() {
+  clearCssLandscapeFallback();
+  if (!isMobileDevice()) return;
+  try {
+    const o = screen.orientation || screen.mozOrientation || screen.msOrientation;
+    if (o && typeof o.unlock === "function") {
+      o.unlock();
+    } else if (screen.unlockOrientation) {
+      screen.unlockOrientation();
+    } else if (screen.mozUnlockOrientation) {
+      screen.mozUnlockOrientation();
+    } else if (screen.msUnlockOrientation) {
+      screen.msUnlockOrientation();
+    }
+  } catch (_) {}
+}
+
 function enterPlayerFullscreen() {
   const stage = document.getElementById("player-surface");
   const modal = document.getElementById("trailer-modal");
@@ -1379,11 +1468,23 @@ function enterPlayerFullscreen() {
     target.webkitRequestFullscreen ||
     target.webkitRequestFullScreen ||
     target.msRequestFullscreen;
+  // Try orientation lock immediately (same user-gesture stack) then again after FS resolves
+  lockLandscapeIfMobile();
   if (req) {
     try {
       const p = req.call(target);
-      if (p && typeof p.catch === "function") p.catch(function () {});
-    } catch (_) {}
+      if (p && typeof p.then === "function") {
+        p.then(function () {
+          lockLandscapeIfMobile();
+        }).catch(function () {
+          lockLandscapeIfMobile();
+        });
+      } else {
+        lockLandscapeIfMobile();
+      }
+    } catch (_) {
+      lockLandscapeIfMobile();
+    }
   }
 }
 
@@ -1395,6 +1496,7 @@ function exitPlayerFullscreen() {
   document.documentElement.classList.remove("sf-player-fs-active");
   document.body.classList.remove("sf-player-fs-active");
   clearTimeout(chromeHideTimer);
+  unlockOrientationIfMobile();
   if (isFsActive()) {
     try {
       (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)?.call(document);
@@ -1428,14 +1530,39 @@ document.getElementById("btn-fullscreen")?.addEventListener("click", (e) => {
 
 ["fullscreenchange", "webkitfullscreenchange", "MSFullscreenChange"].forEach((ev) => {
   document.addEventListener(ev, () => {
-    // If browser exited native FS, keep or clear our CSS class in sync
+    // If browser exited native FS (system UI / back gesture), clear our state + unlock orientation
     if (!isFsActive()) {
       const stage = document.getElementById("player-surface");
-      // only auto-clear if user exited via browser UI; keep CSS FS if still marked intentionally
-      // do nothing — exit is explicit
+      if (stage?.classList.contains("is-fullscreen") || stage?.classList.contains("sf-fs-fallback")) {
+        stage.classList.remove("is-fullscreen", "sf-fs-fallback", "sf-chrome-hidden");
+        document.getElementById("trailer-modal")?.classList.remove("sf-modal-fs");
+        document.documentElement.classList.remove("sf-player-fs-active");
+        document.body.classList.remove("sf-player-fs-active");
+        clearTimeout(chromeHideTimer);
+        unlockOrientationIfMobile();
+      }
+    } else {
+      // Entered native FS — lock landscape on phones
+      lockLandscapeIfMobile();
     }
   });
 });
+
+// Keep CSS landscape fallback in sync if user rotates the phone while fullscreen
+window.addEventListener("orientationchange", () => {
+  const stage = document.getElementById("player-surface");
+  if (stage?.classList.contains("is-fullscreen") || stage?.classList.contains("sf-fs-fallback")) {
+    setTimeout(applyCssLandscapeFallback, 150);
+  }
+});
+if (screen.orientation && typeof screen.orientation.addEventListener === "function") {
+  screen.orientation.addEventListener("change", () => {
+    const stage = document.getElementById("player-surface");
+    if (stage?.classList.contains("is-fullscreen") || stage?.classList.contains("sf-fs-fallback")) {
+      setTimeout(applyCssLandscapeFallback, 150);
+    }
+  });
+}
 
 // --- Captions state ---
 let captionsOn = false;
