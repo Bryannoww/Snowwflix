@@ -1341,11 +1341,12 @@ function showPlayerChrome() {
   const stage = document.getElementById("player-surface");
   stage?.classList.remove("sf-chrome-hidden");
   clearTimeout(chromeHideTimer);
-  // In fullscreen, auto-hide again after 2.5s
+  // In fullscreen, auto-hide again (longer on phone so X / controls are easy to use)
   if (stage?.classList.contains("sf-fs-fallback") || stage?.classList.contains("is-fullscreen")) {
+    const hideMs = (typeof isMobileDevice === "function" && isMobileDevice()) ? 4500 : 2500;
     chromeHideTimer = setTimeout(() => {
       stage?.classList.add("sf-chrome-hidden");
-    }, 2500);
+    }, hideMs);
   }
 }
 function hidePlayerChrome() {
@@ -1650,12 +1651,21 @@ document.addEventListener("keydown", (e) => {
   }
 }, true);
 
-// Single tap = play/pause, double tap = fullscreen (on shields + stage)
+// Gestures on video stage / shields
+// Phone fullscreen: single tap = show top+bottom chrome (X, exit FS, etc); double tap = exit fullscreen
+// Outside fullscreen: single tap = play/pause; double tap = enter fullscreen
+// Laptop: same; mouse move still reveals chrome
 (function bindStageGestures() {
   const stage = document.getElementById("sf-player-stage");
   if (!stage) return;
   let lastTap = 0;
   let singleTimer = null;
+  const TAP_GAP = 320;
+
+  function isInFullscreen() {
+    const surface = document.getElementById("player-surface");
+    return !!(surface?.classList.contains("sf-fs-fallback") || surface?.classList.contains("is-fullscreen") || isFsActive());
+  }
 
   function onTap(e) {
     if (e.target.closest("button, a, .sf-player-controls, .sf-progress-wrap, .sf-player-bottom, .sf-player-top")) {
@@ -1666,41 +1676,72 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     e.stopPropagation();
     const now = Date.now();
-    const surface = document.getElementById("player-surface");
-    const inFs = surface?.classList.contains("sf-fs-fallback") || surface?.classList.contains("is-fullscreen");
-    if (now - lastTap < 300) {
+    const inFs = isInFullscreen();
+    if (now - lastTap < TAP_GAP) {
+      // Double tap
       clearTimeout(singleTimer);
       lastTap = 0;
-      togglePlayerFullscreen();
+      if (inFs) {
+        // Exit fullscreen but stay on the player (controls stay usable)
+        exitPlayerFullscreen();
+      } else {
+        enterPlayerFullscreen();
+      }
     } else {
+      // Potential single tap — wait to distinguish from double
       lastTap = now;
       clearTimeout(singleTimer);
       singleTimer = setTimeout(() => {
-        if (inFs) {
-          // Single tap in fullscreen → fade/show bottom controls tab
-          togglePlayerChrome();
+        if (isInFullscreen()) {
+          // Always SHOW chrome on single tap (don't toggle off) so X / exit FS are easy to reach
+          showPlayerChrome();
         } else {
           togglePlayPause();
         }
-      }, 280);
+      }, TAP_GAP);
     }
   }
 
   stage.addEventListener("click", onTap, true);
   stage.addEventListener("dblclick", (e) => {
-    if (e.target.closest("button, a, .sf-player-controls, .sf-progress-wrap")) return;
+    if (e.target.closest("button, a, .sf-player-controls, .sf-progress-wrap, .sf-player-bottom, .sf-player-top")) return;
     e.preventDefault();
     clearTimeout(singleTimer);
-    togglePlayerFullscreen();
+    lastTap = 0;
+    if (isInFullscreen()) exitPlayerFullscreen();
+    else enterPlayerFullscreen();
   }, true);
 
   document.getElementById("sf-shield-full")?.addEventListener("click", onTap, true);
+  document.getElementById("sf-shield-full")?.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    clearTimeout(singleTimer);
+    lastTap = 0;
+    if (isInFullscreen()) exitPlayerFullscreen();
+    else enterPlayerFullscreen();
+  }, true);
 
-  // Moving mouse / touching controls reveals chrome in FS
-  document.getElementById("player-surface")?.addEventListener("mousemove", () => {
-    const surface = document.getElementById("player-surface");
-    if (surface?.classList.contains("sf-fs-fallback")) showPlayerChrome();
+  // Edge shields: single tap shows chrome in FS (easier on phone)
+  ["sf-shield-top", "sf-shield-bottom"].forEach((id) => {
+    // class-based nodes
   });
+  document.querySelectorAll(".sf-shield-top, .sf-shield-bottom, .sf-shield-right").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (!isInFullscreen()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showPlayerChrome();
+    }, true);
+  });
+
+  // Moving mouse / touching player reveals chrome in FS
+  const surfaceEl = document.getElementById("player-surface");
+  surfaceEl?.addEventListener("mousemove", () => {
+    if (isInFullscreen()) showPlayerChrome();
+  });
+  surfaceEl?.addEventListener("touchstart", () => {
+    if (isInFullscreen()) showPlayerChrome();
+  }, { passive: true });
 })();
 
 // Keep focus on modal when open so keys work
