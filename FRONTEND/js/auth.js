@@ -110,7 +110,7 @@
         if (signoutBtn) signoutBtn.classList.add("hidden");
         if (uploadWrap) uploadWrap.classList.add("hidden");
         if (navAuthLinks) navAuthLinks.classList.remove("hidden");
-        setDisplayName("Login");
+        setDisplayName("Login / Sign up");
         if (menuEmail) menuEmail.textContent = "";
         setAvatars(null, "L");
       }
@@ -349,6 +349,17 @@
         await auth.signOut();
         setMsg("");
         closeModal();
+        // After logout, prompt to log in or create a new account
+        try {
+          if (typeof sfToast === "function") {
+            sfToast("You signed out. Login or sign up to save, like, and download trailers.");
+          }
+        } catch (_) {}
+        // Show the login nudge immediately and open auth shortly
+        sessionStorage.removeItem("snowwflix_nudge_dismissed");
+        setTimeout(() => {
+          showNudge();
+        }, 400);
       } catch (err) {
         console.error(err);
         alert("Could not sign out. Try again.");
@@ -360,32 +371,53 @@
     // Expose for Settings → Log Out
     window.snowwflixSignOut = doSignOut;
 
-    // ---- Guest login nudge after ~1 minute ----
+    // ---- Guest login nudge every ~1 minute until signed in ----
     const NUDGE_KEY = "snowwflix_nudge_dismissed";
     const nudgeEl = document.getElementById("login-nudge");
     let nudgeTimer = null;
+    let nudgeInterval = null;
 
     function hideNudge() {
       nudgeEl?.classList.add("hidden");
     }
     function showNudge() {
-      if (!nudgeEl || window.currentUser) return;
-      if (sessionStorage.getItem(NUDGE_KEY) === "1") return;
+      if (!nudgeEl || window.currentUser || window.auth?.currentUser) return;
+      // Update copy each time
+      const body = nudgeEl.querySelector(".login-nudge-body");
+      if (body) {
+        const strong = body.querySelector("strong");
+        const p = body.querySelector("p");
+        if (strong) strong.textContent = "Log in to unlock more";
+        if (p) p.innerHTML = "Login or sign up free to <strong>save</strong> trailers, <strong>like</strong> them, and <strong>download</strong> videos. Takes under a minute.";
+      }
       nudgeEl.classList.remove("hidden");
     }
     function scheduleNudge() {
       clearTimeout(nudgeTimer);
-      if (window.currentUser) {
+      clearInterval(nudgeInterval);
+      if (window.currentUser || window.auth?.currentUser) {
         hideNudge();
         return;
       }
-      nudgeTimer = setTimeout(showNudge, 60 * 1000);
+      // First show after 1 minute, then every 1 minute until login
+      nudgeTimer = setTimeout(() => {
+        showNudge();
+        nudgeInterval = setInterval(() => {
+          if (window.currentUser || window.auth?.currentUser) {
+            clearInterval(nudgeInterval);
+            hideNudge();
+            return;
+          }
+          showNudge();
+        }, 60 * 1000);
+      }, 60 * 1000);
     }
     scheduleNudge();
     auth.onAuthStateChanged((user) => {
       if (user) {
         hideNudge();
         clearTimeout(nudgeTimer);
+        clearInterval(nudgeInterval);
         // Track presence
         if (db) {
           db.collection("users").doc(user.uid).set({
@@ -400,7 +432,7 @@
       }
     });
     document.getElementById("login-nudge-close")?.addEventListener("click", () => {
-      sessionStorage.setItem(NUDGE_KEY, "1");
+      // Dismiss for this minute only — will reappear next interval until login
       hideNudge();
     });
     document.getElementById("login-nudge-signup")?.addEventListener("click", () => {

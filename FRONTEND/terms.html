@@ -6,13 +6,81 @@
   <title>Snowwflix – Terms of Service</title>
   <style>
     body { margin:0; background:#0b0b10; color:#e6edf3; font-family:Inter,system-ui,sans-serif; line-height:1.65; }
-    .wrap { max-width:800px; margin:0 auto; padding:32px 24px 64px; }
+    .wrap { max-width:800px; margin:0 auto; padding:32px 24px 120px; }
     h1 { margin:0 0 8px; }
     .muted { color:#8b949e; margin-bottom:28px; }
     h2 { margin:32px 0 12px; font-size:1.2rem; color:#f0f6fc; }
     p { color:#c9d1d9; margin:0 0 14px; }
     a { color:#58a6ff; }
     .back { display:inline-block; margin-bottom:24px; color:#58a6ff; text-decoration:none; border:1px solid #30363d; padding:8px 14px; border-radius:8px; }
+    .accept-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: rgba(12, 14, 22, 0.96);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+      z-index: 50;
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.4);
+    }
+    .accept-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+      justify-content: space-between;
+    }
+    .accept-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex: 1 1 240px;
+      font-size: 0.92rem;
+      color: #c9d1d9;
+      cursor: pointer;
+      user-select: none;
+    }
+    .accept-check input {
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      accent-color: #4da3ff;
+      flex-shrink: 0;
+    }
+    .accept-check.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .accept-check .hint {
+      display: block;
+      font-size: 0.78rem;
+      color: #8b949e;
+      margin-top: 2px;
+    }
+    #accept-btn {
+      background: linear-gradient(180deg, #4da3ff, #2b7fd4);
+      color: #0a0f1e;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-weight: 800;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #accept-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: grayscale(0.3);
+    }
+    #accept-status {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #3fb950;
+      display: none;
+    }
+    #accept-status.show { display: block; }
+    .scroll-marker { height: 1px; }
   </style>
 </head>
 <body>
@@ -48,6 +116,84 @@
     <p>Questions about these Terms: <a href="mailto:lordesnoww@gmail.com">lordesnoww@gmail.com</a> · Nairobi, Kenya · Principal Owner: Brian Nyangate</p>
 
     <p style="margin-top:36px;color:#8b949e;">© 2026 SNOWWFLIX. All rights reserved.</p>
+    <div class="scroll-marker" id="terms-end" aria-hidden="true"></div>
   </div>
+
+  <div class="accept-bar">
+    <div class="accept-inner">
+      <label class="accept-check disabled" id="accept-label">
+        <input type="checkbox" id="terms-read-check" disabled />
+        <span>
+          I have read these Terms of Service to the end
+          <span class="hint" id="scroll-hint">Scroll to the bottom to enable this checkbox</span>
+        </span>
+      </label>
+      <button type="button" id="accept-btn" disabled>Accept Terms</button>
+    </div>
+    <div class="accept-inner">
+      <p id="accept-status">✓ Terms accepted. You can return to Snowwflix.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const check = document.getElementById("terms-read-check");
+      const label = document.getElementById("accept-label");
+      const btn = document.getElementById("accept-btn");
+      const hint = document.getElementById("scroll-hint");
+      const status = document.getElementById("accept-status");
+      const end = document.getElementById("terms-end");
+      let reachedBottom = false;
+
+      function enableCheck() {
+        if (reachedBottom) return;
+        reachedBottom = true;
+        check.disabled = false;
+        label.classList.remove("disabled");
+        if (hint) hint.textContent = "Tick the box, then Accept";
+      }
+
+      function onScroll() {
+        if (reachedBottom) return;
+        const rect = end.getBoundingClientRect();
+        // Consider "read to bottom" when the end marker is near the viewport
+        if (rect.top < window.innerHeight - 40) enableCheck();
+      }
+
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      // Short pages: enable immediately
+      setTimeout(onScroll, 100);
+
+      check.addEventListener("change", () => {
+        btn.disabled = !check.checked;
+      });
+
+      btn.addEventListener("click", () => {
+        if (!check.checked) return;
+        try {
+          localStorage.setItem("snowwflix_terms_accepted", "1");
+          localStorage.setItem("snowwflix_terms_accepted_at", new Date().toISOString());
+        } catch (_) {}
+        status.classList.add("show");
+        btn.textContent = "Accepted";
+        btn.disabled = true;
+        check.disabled = true;
+      });
+
+      // Restore if already accepted
+      try {
+        if (localStorage.getItem("snowwflix_terms_accepted") === "1") {
+          enableCheck();
+          check.checked = true;
+          check.disabled = true;
+          btn.disabled = true;
+          btn.textContent = "Accepted";
+          status.classList.add("show");
+          if (hint) hint.textContent = "You already accepted these terms";
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>

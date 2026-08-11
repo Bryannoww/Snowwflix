@@ -102,15 +102,17 @@ function applySettings(s) {
 
   // Sync dark-mode toggle UI (light theme = "day", everything else = dark)
   const isLight = resolved === "light";
-  const toggle = document.getElementById("theme-toggle");
-  if (toggle) {
+  const followingSystem = s.theme === "system" || !s.themeUserSet;
+  const title = followingSystem
+    ? (isLight ? "Light (system) — click for dark" : "Dark (system) — click for light")
+    : (isLight ? "Switch to dark mode" : "Switch to light mode");
+  ["theme-toggle", "theme-toggle-desktop"].forEach((tid) => {
+    const toggle = document.getElementById(tid);
+    if (!toggle) return;
     toggle.classList.toggle("is-light", isLight);
     toggle.setAttribute("aria-pressed", isLight ? "true" : "false");
-    const followingSystem = s.theme === "system" || !s.themeUserSet;
-    toggle.title = followingSystem
-      ? (isLight ? "Light (system) — click for dark" : "Dark (system) — click for light")
-      : (isLight ? "Switch to dark mode" : "Switch to light mode");
-  }
+    toggle.title = title;
+  });
   const darkCheckbox = document.getElementById("darkMode");
   if (darkCheckbox) darkCheckbox.checked = !isLight;
 }
@@ -130,12 +132,20 @@ try {
   else if (mq.addListener) mq.addListener(onSchemeChange);
 } catch (_) {}
 
-// Navbar dark / light toggle — explicit user choice
-document.getElementById("theme-toggle")?.addEventListener("click", () => {
+// Navbar dark / light toggle — explicit user choice (mobile + desktop buttons)
+function toggleThemeClick() {
   const s = loadSettings();
   const resolved = resolveTheme(s);
   const next = resolved === "light" ? "blue" : "light";
   saveSettings({ theme: next, themeUserSet: true });
+}
+function toggleThemeDblClick(e) {
+  e.preventDefault();
+  saveSettings({ theme: "system", themeUserSet: false });
+}
+["theme-toggle", "theme-toggle-desktop"].forEach((tid) => {
+  document.getElementById(tid)?.addEventListener("click", toggleThemeClick);
+  document.getElementById(tid)?.addEventListener("dblclick", toggleThemeDblClick);
 });
 
 // Simple settings modal checkbox (if present)
@@ -144,12 +154,6 @@ document.getElementById("darkMode")?.addEventListener("change", (e) => {
     theme: e.target.checked ? "blue" : "light",
     themeUserSet: true
   });
-});
-
-// Double-click toggle to reset to system preference
-document.getElementById("theme-toggle")?.addEventListener("dblclick", (e) => {
-  e.preventDefault();
-  saveSettings({ theme: "system", themeUserSet: false });
 });
 
 // Simple settings modal open/close (legacy modal in index.html)

@@ -117,43 +117,10 @@ img.loading="lazy";
 
 
 
-/* =========================
-   BACK TO TOP BUTTON
-========================= */
+/* Back-to-top button removed (was too large on mobile) */
 
-const topBtn=document.createElement("button");
+}); // end DOMContentLoaded polish
 
-topBtn.innerHTML="↑";
-
-topBtn.className="top-btn";
-
-document.body.appendChild(topBtn);
-
-
-window.addEventListener("scroll",()=>{
-
-if(window.scrollY > 500){
-    topBtn.style.display="block";
-}
-else{
-    topBtn.style.display="none";
-}
-
-});
-
-
-topBtn.onclick=()=>{
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
-
-};
-
-
-
-});
 const API_KEY = "AIzaSyB6zk-Y9XP5fKPgKCA4IGvO0a5cjkglK6g";
 const BASE_URL = "https://www.googleapis.com/youtube/v3";
 // Free YouTube search proxies (no API key / quota). Tried when Google quota is exhausted.
@@ -1300,16 +1267,31 @@ document.getElementById("sf-btn-subscribe")?.addEventListener("click", () => {
   sfToast("Open YouTube to subscribe to this movie channel");
 });
 
-// Download → y2mate with video context
+// Download → open y2mate with this video already selected (720p page)
 function updateDownloadLink(videoId) {
   const a = document.getElementById("sf-btn-download");
   if (!a) return;
-  // y2mate landing; user pastes URL — we open with youtube URL hint in hash/query when possible
-  const ytUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(videoId || "");
-  a.href = "https://v30.www-y2mate.com/";
+  const id = videoId || currentVideoMeta?.id || "";
+  const ytUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(id);
+  // y2mate youtube path pre-loads the video conversion page
+  const y2mateUrl = id
+    ? "https://www.y2mate.com/youtube/" + encodeURIComponent(id)
+    : "https://www.y2mate.com/";
+  a.href = y2mateUrl;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
   a.onclick = (e) => {
-    // Open y2mate; copy youtube link to clipboard for convenience
+    e.preventDefault();
     try { navigator.clipboard.writeText(ytUrl); } catch (_) {}
+    // Open y2mate with video pre-selected; user picks 720p and downloads
+    const win = window.open(y2mateUrl, "_blank", "noopener,noreferrer");
+    if (!win) {
+      // popup blocked — navigate same tab
+      window.location.href = y2mateUrl;
+    }
+    if (typeof sfToast === "function") {
+      sfToast("Opening download page with this trailer… pick 720p on y2mate");
+    }
   };
 }
 
@@ -1341,13 +1323,7 @@ function showPlayerChrome() {
   const stage = document.getElementById("player-surface");
   stage?.classList.remove("sf-chrome-hidden");
   clearTimeout(chromeHideTimer);
-  // In fullscreen, auto-hide again (longer on phone so X / controls are easy to use)
-  if (stage?.classList.contains("sf-fs-fallback") || stage?.classList.contains("is-fullscreen")) {
-    const hideMs = (typeof isMobileDevice === "function" && isMobileDevice()) ? 4500 : 2500;
-    chromeHideTimer = setTimeout(() => {
-      stage?.classList.add("sf-chrome-hidden");
-    }, hideMs);
-  }
+  // No auto-hide timer — single tap toggles chrome off when user wants
 }
 function hidePlayerChrome() {
   const stage = document.getElementById("player-surface");
@@ -1693,8 +1669,8 @@ document.addEventListener("keydown", (e) => {
       clearTimeout(singleTimer);
       singleTimer = setTimeout(() => {
         if (isInFullscreen()) {
-          // Always SHOW chrome on single tap (don't toggle off) so X / exit FS are easy to reach
-          showPlayerChrome();
+          // Single tap toggles controls on/off (no auto-hide wait)
+          togglePlayerChrome();
         } else {
           togglePlayPause();
         }
@@ -1730,18 +1706,17 @@ document.addEventListener("keydown", (e) => {
       if (!isInFullscreen()) return;
       e.preventDefault();
       e.stopPropagation();
-      showPlayerChrome();
+      togglePlayerChrome();
     }, true);
   });
 
-  // Moving mouse / touching player reveals chrome in FS
+  // Mouse move reveals chrome in FS (desktop); phones use single-tap toggle only
   const surfaceEl = document.getElementById("player-surface");
   surfaceEl?.addEventListener("mousemove", () => {
-    if (isInFullscreen()) showPlayerChrome();
+    if (isInFullscreen() && !(typeof isMobileDevice === "function" && isMobileDevice())) {
+      showPlayerChrome();
+    }
   });
-  surfaceEl?.addEventListener("touchstart", () => {
-    if (isInFullscreen()) showPlayerChrome();
-  }, { passive: true });
 })();
 
 // Keep focus on modal when open so keys work
@@ -2038,13 +2013,28 @@ function renderDatabaseMovies() {
 const menuToggle = document.getElementById("menu-toggle");
 const sideMenu = document.getElementById("side-menu");
 
+function closeSideMenu() {
+  sideMenu?.classList.remove("active");
+  document.body.classList.remove("sf-menu-open");
+}
+function openSideMenu() {
+  sideMenu?.classList.add("active");
+  document.body.classList.add("sf-menu-open");
+}
+
 if (menuToggle && sideMenu) {
-  menuToggle.addEventListener("click", () => {
-    sideMenu.classList.toggle("active");
+  menuToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (sideMenu.classList.contains("active")) closeSideMenu();
+    else openSideMenu();
+  });
+  document.getElementById("side-menu-close")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeSideMenu();
   });
   document.addEventListener("click", (e) => {
     if (!sideMenu.contains(e.target) && !menuToggle.contains(e.target)) {
-      sideMenu.classList.remove("active");
+      closeSideMenu();
     }
   });
 }
@@ -2087,7 +2077,10 @@ function showSearchLoading(q) {
 
 function runTopSearch() {
   const q = (document.getElementById("top-search")?.value || "").trim();
+  // Always hide predictive dropdown when searching (Enter or Search button)
   hideAllSuggestions();
+  document.getElementById("top-suggestions")?.classList.add("hidden");
+  document.getElementById("suggestions")?.classList.add("hidden");
   if (!q) return;
   movies = [];
   nextPageToken = "";
@@ -2105,6 +2098,8 @@ function runTopSearch() {
 
   const nav = document.getElementById("category-nav");
   if (nav) window.scrollTo({ top: nav.offsetTop || 0, behavior: "smooth" });
+  // Blur input so mobile keyboard closes and dropdown stays gone
+  try { document.getElementById("top-search")?.blur(); } catch (_) {}
 }
 
 function dedupeMovies(list) {

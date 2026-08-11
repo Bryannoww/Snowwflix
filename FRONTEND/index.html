@@ -56,13 +56,19 @@
 
 </div>
 <header class="navbar">
-  <!-- Left: Logo (home link) + menu -->
+  <!-- Left: theme (phone) + logo + hamburger below title on mobile -->
   <div class="nav-left">
-    <button id="menu-toggle" class="menu-btn" aria-label="Menu">☰</button>
-    <a href="#top" class="logo logo-link" id="logo-home" title="Snowwflix Home">
-      <span class="logo-emoji">❄️</span>
-      <span class="logo-art">SNOWWFLIX</span>
-    </a>
+    <button type="button" class="theme-toggle theme-toggle-mobile" id="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle dark mode">
+      <span class="theme-icon theme-icon-moon" aria-hidden="true">🌙</span>
+      <span class="theme-icon theme-icon-sun" aria-hidden="true">☀️</span>
+    </button>
+    <div class="nav-brand-col">
+      <a href="#top" class="logo logo-link" id="logo-home" title="Snowwflix Home">
+        <span class="logo-emoji">❄️</span>
+        <span class="logo-art">SNOWWFLIX</span>
+      </a>
+      <button id="menu-toggle" class="menu-btn" aria-label="Menu" title="Menu">☰</button>
+    </div>
     <!-- Auth-aware Login / Sign Up (shown when logged out) -->
     <div class="nav-auth-links" id="nav-auth-links">
       <button type="button" id="nav-login-btn" class="nav-auth-btn">Login</button>
@@ -72,6 +78,7 @@
   </div>
 
   <div id="side-menu" class="side-menu">
+    <button type="button" id="side-menu-close" class="side-menu-close" aria-label="Close menu">✕</button>
     <div class="menu-profile">
       <img id="menu-avatar" src="https://placehold.co/60x60" alt="Profile">
       <h4 id="menu-display-name" data-i18n="guest">Guest</h4>
@@ -96,15 +103,15 @@
     <button type="button" id="top-search-btn" class="primary-btn top-search-btn" data-i18n="search">Search</button>
   </div>
 
-  <!-- Right: dark mode + profile -->
+  <!-- Right: profile (Login / Sign up full label when guest) -->
   <div class="top-icons nav-right">
-    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle dark / light mode" aria-label="Toggle dark mode">
+    <button type="button" class="theme-toggle theme-toggle-desktop" id="theme-toggle-desktop" title="Toggle dark / light mode" aria-label="Toggle dark mode">
       <span class="theme-icon theme-icon-moon" aria-hidden="true">🌙</span>
       <span class="theme-icon theme-icon-sun" aria-hidden="true">☀️</span>
     </button>
     <button type="button" class="profile-chip" id="profile-chip" title="Account">
       <img id="nav-avatar" src="https://placehold.co/40x40/333/ffffff?text=?" alt="" />
-      <span id="nav-username" class="nav-username">Login</span>
+      <span id="nav-username" class="nav-username">Login / Sign up</span>
     </button>
   </div>
 </header>
@@ -452,13 +459,13 @@
 <!-- Toast notifications -->
 <div id="toast-wrap" style="position:fixed;right:1rem;bottom:1rem;z-index:1000"></div>
 
-<!-- Guest login nudge (shows after ~1 min if not signed in) -->
+<!-- Guest login nudge (every ~1 min until signed in) -->
 <div id="login-nudge" class="login-nudge hidden" role="dialog" aria-label="Sign up prompt">
   <button type="button" class="login-nudge-close" id="login-nudge-close" aria-label="Dismiss">✕</button>
   <div class="login-nudge-icon">❄️</div>
   <div class="login-nudge-body">
-    <strong>Enjoying Snowwflix?</strong>
-    <p>Sign up free to save favourites, sync history, and unlock more trailers.</p>
+    <strong>Log in to unlock more</strong>
+    <p>Login or sign up free to <strong>save</strong> trailers, <strong>like</strong> them, and <strong>download</strong> videos. Takes under a minute.</p>
     <div class="login-nudge-actions">
       <button type="button" class="primary-btn" id="login-nudge-signup">Sign up free</button>
       <button type="button" class="ghost-btn" id="login-nudge-login">Login</button>
